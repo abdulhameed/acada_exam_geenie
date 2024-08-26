@@ -1,0 +1,13 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ course.name }}{% endblock %}
+
+{% block content %}
+<h2>{{ course.name }}</h2>
+<p><strong>Code:</strong> {{ course.code }}</p>
+<p><strong>School:</strong> {{ course.school.name }}</p>
+<p><strong>Lecturer:</strong> {{ course.lecturer.get_full_name }}</p>
+<p><strong>Description:</strong> {{ course.description }}</p>
+<p><strong>Created:</strong> {{ course.created_at }}</p>
+<p><strong>Last Updated:</strong> {{ course.updated_at }}</p>
+{% endblock %}

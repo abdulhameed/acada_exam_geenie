@@ -1,0 +1,16 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ exam.title }}{% endblock %}
+
+{% block content %}
+<h2>{{ exam.title }}</h2>
+<p><strong>Course:</strong> {{ exam.course.name }} ({{ exam.course.code }})</p>
+<p><strong>Description:</strong> {{ exam.description }}</p>
+<p><strong>Date:</strong> {{ exam.date }}</p>
+<p><strong>Duration:</strong> {{ exam.duration }}</p>
+<p><strong>Number of Questions:</strong> {{ exam.number_of_questions }}</p>
+<p><strong>Difficulty:</strong> {{ exam.get_difficulty_display }}</p>
+<p><strong>Unique Questions:</strong> {{ exam.unique_questions|yesno:"Yes,No" }}</p>
+<p><strong>Created:</strong> {{ exam.created_at }}</p>
+<p><strong>Last Updated:</strong> {{ exam.updated_at }}</p>
+{% endblock %}

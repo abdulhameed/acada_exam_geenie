@@ -1,0 +1,11 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ school.name }}{% endblock %}
+
+{% block content %}
+<h2>{{ school.name }}</h2>
+<p><strong>Domain:</strong> {{ school.domain }}</p>
+<p><strong>Address:</strong> {{ school.address }}</p>
+<p><strong>Registration Date:</strong> {{ school.registration_date }}</p>
+<p><strong>Active:</strong> {{ school.is_active|yesno:"Yes,No" }}</p>
+{% endblock %}

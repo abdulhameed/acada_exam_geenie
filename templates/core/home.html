@@ -1,0 +1,63 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Home - Exam Geenie{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Welcome to the Exam Geenie</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="card-title h5 mb-0">Your Courses</h2>
+            </div>
+            <div class="card-body">
+                {% if courses %}
+                    <ul class="list-group">
+                        {% for course in courses %}
+                            <li class="list-group-item">
+                                <a href="{% url 'course_detail' course.pk %}">{{ course.name }} ({{ course.code }})</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>You are not enrolled in any courses.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="card-title h5 mb-0">Upcoming Exams</h2>
+            </div>
+            <div class="card-body">
+                {% if upcoming_exams %}
+                    <ul class="list-group">
+                        {% for exam in upcoming_exams %}
+                            <li class="list-group-item">
+                                <a href="{% url 'exam_detail' exam.pk %}">{{ exam.title }}</a>
+                                <br>
+                                <small class="text-muted">{{ exam.date|date:"F d, Y H:i" }}</small>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No upcoming exams.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if user.role == 'lecturer' or user.role == 'hod' or user.role == 'admin' %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <h2 class="h4 mb-3">Quick Actions</h2>
+        <a href="{% url 'course_create' %}" class="btn btn-primary me-2">Create New Course</a>
+        <a href="{% url 'exam_create' %}" class="btn btn-secondary">Create New Exam</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
