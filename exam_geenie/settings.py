@@ -12,6 +12,13 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
+from celery import Celery
+from decouple import config
+# import djcelery
+
+
+# djcelery.setup_loader()
+# config = Config()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-mj_()tbho@li6&rotsn@rj8!xu0!x1i8&3kbkdbrg=etik&2o)"
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -46,6 +53,8 @@ INSTALLED_APPS = [
     "core",
     "ai_integration",
     "schools",
+    # "djcelery",
+    # "celery",
 
 ]
 
@@ -139,8 +148,27 @@ STATICFILES_DIRS = [
 # The absolute path to the directory where collectstatic will collect static files for deployment.
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # For production use (optional).
 
+# Media files (uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+OPENAI_API_KEY = 'sk-iocPUgXJgpIDGdPEIcgKvvH_HmWuyrD3SyY4EnL7NoT3BlbkFJ427YvjMT3SsQrXpf2LBljt4wD5aShhgmpzS13XIUIA'
+ANTHROPIC_API_KEY = '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'
+AI_PROVIDER = 'openai'  # or 'anthropic'
+
+# Celery Configuration
+CELERY_BROKER_URL = 'redis://localhost:6379'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+
+# Initialize Celery
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'exam_geenie.settings')
+celery_app = Celery('exam_geenie')
+celery_app.config_from_object('django.conf:settings', namespace='CELERY')
+celery_app.autodiscover_tasks()

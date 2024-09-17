@@ -1,0 +1,33 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Exams</h1>
+    <a href="{% url 'exam_create' %}" class="btn btn-primary mb-3">Create New Exam</a>
+    <div class="row">
+        {% for exam in exams %}
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ exam.title }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ exam.course.code }}: {{ exam.course.name }}</h6>
+                    <p class="card-text">
+                        <strong>Date:</strong> {{ exam.date|date:"F d, Y H:i" }}<br>
+                        <strong>Duration:</strong> {{ exam.duration }}<br>
+                        <strong>Difficulty:</strong> {{ exam.get_difficulty_display }}
+                    </p>
+                    <a href="{% url 'exam_detail' exam.id %}" class="btn btn-info">View Details</a>
+                    {% if exam.date > now %}
+                        <a href="{% url 'start_exam' exam.id %}" class="btn btn-success">Start Exam</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <p>No exams available.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

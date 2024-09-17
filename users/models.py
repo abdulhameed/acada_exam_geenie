@@ -34,6 +34,7 @@ class CustomUser(AbstractUser):
         related_name='custom_user_set',
         related_query_name='custom_user',
     )
+    is_school_admin = models.BooleanField(default=False)
 
     def __str__(self):
         school_name = self.school.name if self.school else 'No school'
@@ -41,3 +42,9 @@ class CustomUser(AbstractUser):
             f"{self.username} ({self.get_role_display()} "
             f"at {school_name})"
         )
+
+    def is_lecturer_for_course(self, course):
+        return self == course.lecturer
+
+    def can_create_course_content(self, course):
+        return self.is_school_admin or self.is_lecturer_for_course(course)
