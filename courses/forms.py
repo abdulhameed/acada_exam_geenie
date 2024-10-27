@@ -16,3 +16,17 @@ class CourseContentForm(forms.ModelForm):
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'pdf_file': forms.FileInput(attrs={'class': 'form-control'}),
         }
+
+
+class CourseRegistrationForm(forms.Form):
+    courses = forms.ModelMultipleChoiceField(
+        queryset=Course.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['courses'].queryset = Course.objects.filter(school=user.school)

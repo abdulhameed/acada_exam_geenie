@@ -3,6 +3,7 @@ from django.db import models
 from schools.models import School
 
 
+# student, lecturer, hod, school_admin
 class CustomUser(AbstractUser):
     ROLES = (
         ('student', 'Student'),

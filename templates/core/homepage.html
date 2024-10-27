@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamGenie - Revolutionary AI-Powered Learning Platform</title>
+<!-- Halfmoon CSS -->
+<link href="https://cdn.jsdelivr.net/npm/halfmoon@2.0.2/css/halfmoon.min.css" rel="stylesheet" integrity="sha256-RjeFzczeuZHCyS+Gvz+kleETzBF/o84ZRHukze/yv6o=" crossorigin="anonymous">    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+
+        /* General section improvements */
+        .section {
+            padding: 5rem 0;
+            margin-bottom: 3rem;
+        }
+
+        .section + .section {
+            margin-top: 4rem; /* Add space above each section that follows another section */
+        }
+
+        /* Ensure consistent spacing for all main sections */
+        #features,
+        #testimonials,
+        #cta {
+            padding: 5rem 0;
+            margin-bottom: 4rem;
+        }
+
+        .card {
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .custom-bg {
+            background: linear-gradient(45deg, #4e54c8, #8f94fb);
+        }
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3 {
+            margin-bottom: 1rem;
+        }
+        .btn {
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+            }
+            
+            .navbar-nav {
+                margin-top: 1rem;
+            }
+            
+            .section {
+                padding: 2rem 0;
+            }
+        }
+        :root {
+            --primary-color: #6c5ce7;
+            --secondary-color: #a29bfe;
+            --text-color: #2d3436;
+            --background-color: #ffffff;
+        }
+        body {
+            color: var(--text-color);
+            background-color: var(--background-color);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+        }
+
+        .navbar-nav {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        }
+
+        .navbar-nav li {
+        margin-left: 1rem;
+        }
+
+        .navbar-nav .nav-link {
+        padding: 0.5rem 0;
+        }
+
+        /* Feature section */
+        #features {
+            background-color: #f8f9fa;
+        }
+
+        #features .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        #features h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* How it works section */
+        #how-it-works {
+            background-color: #ffffff;
+            padding-bottom: 5rem;
+            margin-bottom: 4rem;
+            padding-top: 5rem;
+            margin-top: 4rem;
+        }
+
+        #how-it-works h5 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        #how-it-works .card {
+            margin-bottom: 2rem; /* Increase space below each card */
+        }
+
+        /* Testimonials section */
+        #testimonials {
+            background-color: #f8f9fa;
+        }
+
+        #testimonials .card {
+            background-color: #ffffff;
+        }
+
+        #testimonials .card-text {
+            font-style: italic;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Call to action section */
+        #cta {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            padding: 5rem 0;
+            text-align: center;
+        }
+
+        #cta h2 {
+            font-size: 2.5rem;
+            color: #ffffff;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #cta .btn {
+            font-size: 1.25rem;
+            padding: 0.75rem 2rem;
+            border-radius: 50px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        #cta .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        /* footer section */
+
+        .footer {
+            background: linear-gradient(45deg, #7c3aed, #8b5cf6); /* Purple gradient to match the CTA section */
+            color: #f3f4f6; /* Light text color for contrast */
+            padding: 3rem 0;
+            margin-top: 0; /* Remove any top margin to connect with the CTA section */
+        }
+
+        .footer h5 {
+            color: #ffffff;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .footer ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer ul li {
+            margin-bottom: 0.5rem;
+        }
+
+        .footer a {
+            color: #e0e7ff; /* Light purple for links */
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+
+        .footer .social-icons {
+            font-size: 1.5rem;
+        }
+
+        .footer .social-icons a {
+            margin-right: 1rem;
+        }
+
+        .footer hr {
+            border-color: rgba(255, 255, 255, 0.1);
+            margin: 2rem 0;
+        }
+
+        .footer .copyright {
+            text-align: center;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Equal height cards */
+        .equal-height-cards {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .equal-height-cards > [class*='col-'] {
+            display: flex;
+            flex-direction: column;
+        }
+        .equal-height-cards .card {
+            flex: 1 1 auto;
+        }
+
+    </style>
+</head>
+<body class="with-custom-webkit-scrollbars with-custom-css-scrollbars" data-dm-shortcut-enabled="true" data-set-preferred-mode-onload="true">
+    <div class="page-wrapper">
+        <!-- Navbar -->
+        <nav class="navbar custom-bg">
+            <div class="container-fluid">
+              <a href="#" class="navbar-brand">ExamGenie</a>
+              <ul class="navbar-nav d-none d-md-flex"> <!-- Hide on small screens, show on medium and up -->
+                <li><a href="#features" class="nav-link">Features</a></li>
+                <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+                <li><a href="#testimonials" class="nav-link">Testimonials</a></li>
+                <li><a href="#" class="nav-link">Contact</a></li>
+              </ul>
+              <div class="navbar-content ml-auto">
+                <a href="{% url 'school_create' %}" class="btn btn-primary" role="button">Get Started</a>
+              </div>
+            </div>
+          </nav>
+
+        <!-- Content wrapper -->
+        <div class="content-wrapper">
+            <!-- Hero Section -->
+            <div class="custom-bg text-white content d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+                <div class="container text-center">
+                    <h1 class="display-4 font-weight-bold mb-20">Revolutionize Your Exams with AI and Harness it's Power to Transform Your Exam Process</h1>
+                    <p class="lead mb-20">ExamGenie empowers educators to create, administer, and grade exams with unprecedented efficiency and insight.</p>
+                    <a href="{% url 'school_create' %}" class="btn btn-light btn-lg mr-5" role="button">Get Started</a>
+                    <button class="btn btn-outline-light btn-lg">Watch Demo</button>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <div id="features" class="content">
+                <div class="container">
+                    <h2 class="text-center mb-20">Powerful Features for Modern Education</h2>
+                    <div class="row equal-height-cards">
+                        <div class="col-lg-4">
+                            <div class="card text-center h-100">
+                                <div class="card-body d-flex flex-column">
+                                    <i class="fas fa-school feature-icon text-primary"></i>
+                                    <h3 class="card-title">AI-Powered Exam Creation</h3>
+                                    <p class="card-text">Generate high-quality, diverse questions instantly from your course materials. Say goodbye to hours spent crafting exams.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card text-center h-100">
+                                <div class="card-body d-flex flex-column">
+                                    <i class="fas fa-chalkboard-teacher feature-icon text-primary"></i>
+                                    <h3 class="card-title">Intelligent Administration</h3>
+                                    <p class="card-text">Seamlessly deliver exams online with advanced proctoring and real-time monitoring capabilities.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card text-center h-100">
+                                <div class="card-body d-flex flex-column">
+                                    <i class="fas fa-robot feature-icon text-primary"></i>
+                                    <h3 class="card-title">Auto Grading & Insights</h3>
+                                    <p class="card-text">Grade exams in seconds and gain deep insights into student performance with our AI-driven analytics.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- How It Works Section -->
+            <div id="how-it-works" class="content bg-light">
+                <div class="container">
+                    <h2 class="text-center mb-20">How ExamGenie Works</h2>
+                    <div class="row">
+                        <div class="col-lg-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">1. Upload Your Course Content</h5>
+                                    <p class="card-text">Simply input your course materials, and our AI analyzes them to understand your curriculum.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">2. Generate & Customize Exams</h5>
+                                    <p class="card-text">Our AI creates tailored Exam questions. Fine-tune them to perfectly match your teaching style and objectives.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">3. Administer & Analyze</h5>
+                                    <p class="card-text">Deliver exams online, monitor in real-time, and receive instant grading and comprehensive performance analytics.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        <!-- Testimonial Section -->
+        <div id="testimonials" class="content">
+            <div class="container">
+                <h2 class="text-center mb-20">What Our Users Say</h2>
+                <div class="row equal-height-cards">
+                    <div class="col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <p class="card-text">"ExamGenie has cut my exam preparation time by 80%. The AI-generated questions are spot-on, and the instant grading is a game-changer!"</p>
+                                <footer class="blockquote-footer">— Dr. Sarah, Computer Science Professor</footer>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <p class="card-text">"The AI-generated questions save me hours of work. I can focus more on teaching now."</p>
+                                <footer class="blockquote-footer">Jane Smith, Professor</footer>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <p class="card-text">"The insights I get from ExamGenie's analytics have revolutionized how I approach teaching. I can now identify and address knowledge gaps more effectively than ever."</p>
+                                <footer class="blockquote-footer">— Prof. Michael Rodriguez, Biology Department Chair</footer>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <!-- Call to Action -->
+            <div id="cta" class="section">
+                <div class="container">
+                    <h2 class="mb-4">Ready to Transform Your Assessment Process?</h2>
+                    <p class="lead text-white mb-4">Join thousands of educators already using AI to create smarter exams, save countless hours, and gain unprecedented insights into student learning.</p>
+                    <a href="{% url 'school_create' %}" class="btn btn-light btn-lg" role="button">Get Started Today for Free</a>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="footer">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h5>ExamGenie</h5>
+                            <p>Revolutionizing education with AI-powered learning solutions.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>Quick Links</h5>
+                            <ul>
+                                <li><a href="#">About Us</a></li>
+                                <li><a href="#">Features</a></li>
+                                <li><a href="#">Pricing</a></li>
+                                <li><a href="#">Contact</a></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>Connect</h5>
+                            <div class="social-icons">
+                                <a href="#"><i class="fab fa-facebook"></i></a>
+                                <a href="#"><i class="fab fa-twitter"></i></a>
+                                <a href="#"><i class="fab fa-linkedin"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="copyright">
+                        <p>&copy; 2024 ExamGenie. All rights reserved.</p>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+<!-- Option 1: Bootstrap JS bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha256-CDOy6cOibCWEdsRiZuaHf8dSGGJRYuBGC+mjoJimHGw=" crossorigin="anonymous"></script>
+</body>
+</html>

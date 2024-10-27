@@ -1,0 +1,90 @@
+{# templates/core/sidebar_base.html #}
+{% extends "core/base.html" %}
+
+{% block body_class %}with-sidebar{% endblock %}
+
+{% block sidebar_toggle %}
+<button class="btn" type="button" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Sidebar overlay -->
+<div class="sidebar-overlay"></div>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="sidebar-menu">
+        {% if user.role == 'student' %}
+            <a href="{% url 'home'%}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a href="{% url 'course_list'%}" class="sidebar-link {% if 'courses' in request.path %}active{% endif %}">
+                <i class="fas fa-book"></i> Courses
+            </a>
+            <a href="{% url 'exam_lobby'%}" class="sidebar-link {% if 'exams' in request.path %}active{% endif %}">
+                <i class="fas fa-file-alt"></i> Exams
+            </a>
+            <a href="{% url 'course_list'%}" class="sidebar-link {% if 'profile' in request.path %}active{% endif %}">
+                <i class="fas fa-user"></i> Profile
+            </a>
+        {% elif user.role == 'lecturer' %}
+            <a href="#" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a href="#" class="sidebar-link {% if 'courses' in request.path %}active{% endif %}">
+                <i class="fas fa-book"></i> Courses
+            </a>
+            <a href="#" class="sidebar-link {% if 'exams' in request.path %}active{% endif %}">
+                <i class="fas fa-file-alt"></i> Exams
+            </a>
+            <a href="#" class="sidebar-link {% if 'analytics' in request.path %}active{% endif %}">
+                <i class="fas fa-chart-bar"></i> Analytics
+            </a>
+            <a href="#" class="sidebar-link {% if 'reports' in request.path %}active{% endif %}">
+                <i class="fas fa-file-download"></i> Reports
+            </a>
+        {% elif user.role == 'hod' %}
+            <!-- HOD menu items -->
+            <a href="#" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a href="#" class="sidebar-link {% if 'department' in request.path %}active{% endif %}">
+                <i class="fas fa-building"></i> Department
+            </a>
+            <a href="#" class="sidebar-link {% if 'analytics' in request.path %}active{% endif %}">
+                <i class="fas fa-chart-bar"></i> Analytics
+            </a>
+            <a href="#" class="sidebar-link {% if 'reports' in request.path %}active{% endif %}">
+                <i class="fas fa-file-download"></i> Reports
+            </a>
+            <a href="#" class="sidebar-link {% if 'settings' in request.path %}active{% endif %}">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+        {% elif user.role == 'school_admin' %}
+            <!-- School Admin menu items -->
+            <a href="#" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a href="#" class="sidebar-link {% if 'school' in request.path %}active{% endif %}">
+                <i class="fas fa-university"></i> School Management
+            </a>
+            <a href="#" class="sidebar-link {% if 'settings' in request.path %}active{% endif %}">
+                <i class="fas fa-cog"></i> System Settings
+            </a>
+            <a href="#" class="sidebar-link {% if 'analytics' in request.path %}active{% endif %}">
+                <i class="fas fa-chart-bar"></i> Analytics
+            </a>
+            <a href="#" class="sidebar-link {% if 'reports' in request.path %}active{% endif %}">
+                <i class="fas fa-file-download"></i> Reports
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Main content -->
+<div class="main-content">
+    {% block main_content %}{% endblock %}
+</div>
+{% endblock %}

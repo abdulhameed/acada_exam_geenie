@@ -39,14 +39,17 @@ class Question(models.Model):
 
     def __str__(self):
         return f"Question {self.id} for {self.exam}"
-    
+
 
 class StudentExam(models.Model):
     student = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    individual_start_time = models.DateTimeField(null=True, blank=True)
+    individual_end_time = models.DateTimeField(null=True, blank=True)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(null=True, blank=True)
     STATUS_CHOICES = [
+        ('waiting', 'Waiting'),
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
     ]

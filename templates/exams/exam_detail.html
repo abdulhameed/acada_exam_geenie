@@ -14,6 +14,7 @@
 <p><strong>Created:</strong> {{ exam.created_at }}</p>
 <p><strong>Last Updated:</strong> {{ exam.updated_at }}</p>
 
+{% if user.role == 'lecturer' or user.role == 'hod' or user.role == 'school_admin' %}
 <h3>Questions</h3>
 {% if questions %}
     <ul>
@@ -31,5 +32,13 @@
     <button type="submit" name="generate_questions" class="btn btn-primary">Generate Questions</button>
     <button type="submit" name="switch_ai_provider" class="btn btn-secondary">Switch AI Provider</button>
 </form>
+
+{% else %}
+    <p>Exam questions will be available when you start the exam.</p>
+{% endif %}
+
+{% if user.role == 'student' and exam.date > now %}
+    <a href="{% url 'take_exam' exam.pk %}" class="btn btn-primary mt-3">Take Exam</a>
+{% endif %}
 
 {% endblock %}

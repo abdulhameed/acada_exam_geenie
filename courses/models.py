@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from schools.models import School
 from users.models import CustomUser
@@ -8,6 +9,11 @@ class Course(models.Model):
     name = models.CharField(max_length=200)
     code = models.CharField(max_length=20)
     lecturer = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    students = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='enrolled_courses',
+        blank=True
+    )
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

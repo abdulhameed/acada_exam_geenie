@@ -1,71 +1,289 @@
+{# templates/core/base.html #}
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}My Django Site{% endblock %}</title>
+    <title>{% block title %}Base Template{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/global.css' %}">
     <!-- Halfmoon CSS -->
     <link href="https://cdn.jsdelivr.net/npm/halfmoon@2.0.1/css/halfmoon.min.css" rel="stylesheet" integrity="sha256-SsJizWSIG9JT9Qxbiy8xnYJfjCAkhEQ0hihxRn7jt2M=" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        /* Sidebar styles */
+        .with-sidebar {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .content-wrapper {
+            flex: 1;
+            min-width: 0;
+            margin-left: 250px;  /* Match sidebar width */
+            transition: margin-left 0.3s ease-in-out;
+        }
+        
+        .sidebar {
+            background-color: #1a237e !important;
+            color: #ffffff;
+            width: 250px;
+            border-right: 2px solid #3949ab;
+            box-shadow: 3px 0 10px rgba(0,0,0,0.2);
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            transform: translateX(0);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1040;
+            padding-top: 0; /* Remove padding-top */
+        }
+        
+        
+        .sidebar-menu {
+            padding: 1rem;
+            padding-top: 1rem; /* Reduce top padding */
+        }
+        
+        .sidebar-link {
+
+            color: #ffffff;
+            padding: 1rem 1.25rem;
+            border-radius: 0.375rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s ease;
+            font-weight: 500;
+
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+        
+        .sidebar-link i {
+            margin-right: 1rem;
+            width: 24px;
+            text-align: center;
+            opacity: 0.9;
+        }
+        
+        .sidebar-link:hover {
+            background-color: #283593;
+            color: #ffffff;
+            transform: translateX(5px);
+        }
+        
+        .sidebar-link.active {
+            background-color: #3949ab;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .content-wrapper {
+            flex: 1;
+            min-width: 0;
+            margin-left: 250px;  /* Match sidebar width */
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1030;
+        }
+        
+        /* Navbar adjustments */
+        .navbar {
+            background-color: #2c3e50;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            padding: 0.75rem 1.5rem;
+            position: fixed;
+            top: 0;
+            right: 0;
+            left: 250px; /* Match sidebar width */
+            z-index: 1030;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            transition: left 0.3s ease-in-out; /* Add transition for smooth sidebar toggle */
+        }
+
+
+        .navbar-brand {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 1.25rem;
+        }
+
+        .navbar-brand:hover {
+            color: #e3f2fd;
+            text-decoration: none;
+        }
+
+        .navbar .btn-link {
+            color: #ffffff;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            transition: color 0.2s ease;
+        }
+
+        .navbar .btn-link:hover {
+            color: #90caf9;
+        }
+
+        .navbar-text {
+            color: #ecf0f1;
+            margin-right: 1rem;
+        }
+
+        /* Toggle button style */
+        .navbar .btn {
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+        }
+
+        .navbar .btn:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        /* Content adjustments */
+        .content {
+            padding: 80px 20px 20px; /* Added top padding for fixed navbar */
+        }
+        
+        /* Mobile adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar-visible .sidebar {
+                transform: translateX(0);
+            }
+            
+            .sidebar-visible .sidebar-overlay {
+                display: block;
+            }
+            
+            .content-wrapper {
+                margin-left: 0 !important;
+            }
+
+            .navbar {
+                left: 0; /* Navbar extends full width on mobile */
+            }
+        }
+        
+        /* Desktop adjustments */
+        @media (min-width: 769px) {
+            .sidebar {
+                transform: translateX(0) !important;
+            }
+
+            .content-wrapper {
+                margin-left: 250px;
+            }
+            
+            .sidebar-collapsed .content-wrapper {
+                margin-left: 0;
+            }
+            
+            .sidebar-collapsed .sidebar {
+                transform: translateX(-100%) !important;
+            }
+
+            .sidebar-collapsed .navbar {
+                left: 0; /* Navbar extends full width when sidebar is collapsed */
+            }
+        }
+        </style>
+
+
     {% block extra_css %}
     {% endblock %}
 
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'home' %}">Exam Geenie</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'home' %}">Home</a>
-                        </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'school_create' %}">Create School</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'course_create' %}">Create Course</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'exam_create' %}">Create Exam</a>
-                            </li>
-                    {% endif %}
-                </ul>
-                <ul class="navbar-nav">
-                    {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <span class="nav-link">Welcome, {{ user.username }}</span>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'logout' %}">Log Out</a>
-                        </li>
-                    {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'login' %}">Log In</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'user_signup' %}">Sign Up</a>
-                        </li>
-                    {% endif %}
-                </ul>
+<body class="{% block body_class %}{% endblock %}">
+    <!-- Content wrapper -->
+    <div class="content-wrapper">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                {% block sidebar_toggle %}{% endblock %}
             </div>
-        </div>
-    </nav>
+            <a href="{% url 'home' %}" class="navbar-brand">
+                Exam Geenie
+            </a>
+            <div class="navbar-content ml-auto">
+                {% if user.is_authenticated %}
+                    <span class="navbar-text">Welcome, {{ user.username }}</span>
+                    <form method="post" action="{% url 'logout' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button class="btn btn-link nav-link" type="submit">Log Out</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-link nav-link">Log In</a>
+                    <a href="#" class="btn btn-link nav-link">Sign Up</a>
+                {% endif %}
+            </div>
+        </nav>
 
-    <div class="container mt-4">
-        {% block content %}
-        {% endblock %}
+        <!-- Page content -->
+        <div class="content">
+            {% block content %}
+            {% endblock %}
+        </div>
     </div>
 
-    <!-- Option 1: Bootstrap JS bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script>
+        // Sidebar functionality
+        function toggleSidebar() {
+            const body = document.body;
+            if (window.innerWidth <= 768) {
+                body.classList.toggle('sidebar-visible');
+            } else {
+                body.classList.toggle('sidebar-collapsed');
+            }
+        }
+        
+        // Close sidebar when clicking overlay on mobile
+        document.addEventListener('DOMContentLoaded', function() {
+            const overlay = document.querySelector('.sidebar-overlay');
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    document.body.classList.remove('sidebar-visible');
+                });
+            }
+
+            // Initialize sidebar state
+            const body = document.body;
+            if (window.innerWidth <= 768) {
+                body.classList.remove('sidebar-visible');
+            }
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) {
+                    document.body.classList.remove('sidebar-visible');
+                }
+            });
+        });
+        </script>
+
     {% block extra_js %}
-    {% endblock %}
+        {% endblock %}
+    <!-- Halfmoon JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha256-CDOy6cOibCWEdsRiZuaHf8dSGGJRYuBGC+mjoJimHGw=" crossorigin="anonymous"></script>
 
 </body>
 </html>

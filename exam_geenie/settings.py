@@ -10,10 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 from celery import Celery
 from decouple import config
+# from celery.schedules import crontab
 # import djcelery
 
 
@@ -39,6 +40,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -53,9 +55,9 @@ INSTALLED_APPS = [
     "core",
     "ai_integration",
     "schools",
-    # "djcelery",
-    # "celery",
-
+    "celery",
+    'channels',
+    'captcha',
 ]
 
 MIDDLEWARE = [
@@ -88,6 +90,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "exam_geenie.wsgi.application"
 
+ASGI_APPLICATION = 'exam_geenie.asgi.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer'
+    }
+}
+
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -102,6 +111,11 @@ DATABASES = {
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
 LOGIN_TEMPLATE = 'users/login.html'
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    # Add any custom backends here
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -128,7 +142,7 @@ AUTH_USER_MODEL = 'users.CustomUser'
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = 'Africa/Lagos'
 
 USE_I18N = True
 
@@ -157,14 +171,17 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-
-OPENAI_API_KEY = 'sk-iocPUgXJgpIDGdPEIcgKvvH_HmWuyrD3SyY4EnL7NoT3BlbkFJ427YvjMT3SsQrXpf2LBljt4wD5aShhgmpzS13XIUIA'
-ANTHROPIC_API_KEY = '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'
+OPENAI_API_KEY = config('OPENAI_API_KEY')
+ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY')
 AI_PROVIDER = 'openai'  # or 'anthropic'
 
 # Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
 
 # Initialize Celery
 
@@ -172,3 +189,33 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'exam_geenie.settings')
 celery_app = Celery('exam_geenie')
 celery_app.config_from_object('django.conf:settings', namespace='CELERY')
 celery_app.autodiscover_tasks()
+
+
+# Celery Beat schedule
+# CELERY_BEAT_SCHEDULE = {
+#     'manage-exams-every-minute': {
+#         'task': 'exams.tasks.run_manage_exams',
+#         'schedule': crontab(minute='*'),
+#     },
+# }
+
+
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
+EMAIL_USE_TLS = True
+
+EMAIL_PORT = 2525
+
+
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = config('EMAIL_HOST_USER')
+EMAIL_TIMEOUT = 250
+
+
+CAPTCHA_LENGTH = 6  # Number of characters in captcha
+CAPTCHA_TIMEOUT = 5  # Minutes before captcha expires
+CAPTCHA_NOISE_FUNCTIONS = ('captcha.helpers.noise_dots',)  # Add noise to make it harder for bots
+CAPTCHA_CHALLENGE_FUNCT = 'captcha.helpers.random_char_challenge'  # Use random characters

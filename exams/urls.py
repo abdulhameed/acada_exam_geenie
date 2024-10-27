@@ -15,4 +15,11 @@ urlpatterns = [
     path('exams/<int:exam_id>/start/', views.start_exam, name='start_exam'),
     path('exams/take/<int:student_exam_id>/', views.take_exam, name='take_exam'),
     path('exams/results/<int:student_exam_id>/', views.exam_results, name='exam_results'),
+    path('exam-room/', views.exam_room, name='exam_room'),
+    path('exam-room/<int:exam_id>/', views.exam_room, name='exam_room'),
+    path('api/exam-content/<int:exam_id>/', views.get_exam_content, name='get_exam_content'),
+    path('lobby/', views.exam_lobby, name='exam_lobby'),
+    path('room/<int:exam_id>/', views.exam_room, name='exam_room'),
+    path('api/save-answer/<int:exam_id>/', views.save_answer, name='save_answer'),
+
 ]

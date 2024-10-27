@@ -22,19 +22,24 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path('', HomeView.as_view(), name='home'),
+    path('dashboard/', HomeView.as_view(), name='home'),
     path("", include('users.urls')),
     path("", include('courses.urls')),
     path("", include('exams.urls')),
     # path("", include('analytics.urls')),
     # path("", include('notifications.urls')),
-    # path("", include('core.urls')),
+    path("", include('core.urls')),
     # path("", include('ai_integration.urls')),
     path("", include('schools.urls')),
+    path('captcha/', include('captcha.urls')),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(
         settings.MEDIA_URL,
         document_root=settings.MEDIA_ROOT
+        )
+    urlpatterns += static(
+        settings.STATIC_URL,
+        document_root=settings.STATIC_ROOT
         )

@@ -1,8 +1,8 @@
-{% extends 'core/base.html' %}
+{% extends "core/sidebar_base.html" %}
 
 {% block title %}Create Course{% endblock %}
 
-{% block content %}
+{% block main_content %}
 <h2>Create Course</h2>
 <form method="post">
     {% csrf_token %}

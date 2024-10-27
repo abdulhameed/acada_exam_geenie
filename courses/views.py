@@ -3,6 +3,14 @@ from django.contrib.auth.decorators import login_required
 from courses.forms import CourseContentForm, CourseForm
 from courses.models import Course
 from django.core.exceptions import PermissionDenied
+from django.views.generic import ListView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
+from django.urls import reverse_lazy
+from django.views.generic.edit import FormView
+
+from users.models import CustomUser
+from .forms import CourseRegistrationForm
 
 
 @login_required
@@ -68,3 +76,45 @@ def course_content_create(request, course_id):
         'courses/course_content_form.html',
         {'form': form, 'course': course}
         )
+
+
+class CourseRegistrationView(LoginRequiredMixin, FormView):
+    template_name = 'courses/course_registration.html'
+    form_class = CourseRegistrationForm
+    success_url = reverse_lazy('home')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        user = self.request.user
+        selected_courses = form.cleaned_data['courses']
+        user.enrolled_courses.set(selected_courses)
+        messages.success(self.request, 'Course registration successful!')
+        return super().form_valid(form)
+
+
+class CourseAssignmentView(LoginRequiredMixin, ListView):
+    template_name = 'courses/course_assignment.html'
+    # /Users/ChuzzyOfficial/PycharmProjects/exam_geenie/templates/courses/course_assignment.html
+    context_object_name = 'students'
+
+    def get_queryset(self):
+        return CustomUser.objects.filter(school=self.request.user.school, role='student')
+
+    def post(self, request, *args, **kwargs):
+        student_id = request.POST.get('student')
+        course_id = request.POST.get('course')
+        if student_id and course_id:
+            student = CustomUser.objects.get(id=student_id)
+            course = Course.objects.get(id=course_id)
+            student.enrolled_courses.add(course)
+            messages.success(request, f'{student.username} has been assigned to {course.name}')
+        return redirect('course_assignment')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['courses'] = Course.objects.filter(school=self.request.user.school)
+        return context
