@@ -84,6 +84,11 @@ jobs:
         with:
           app-name: 'exam-geenie'
           slot-name: 'Production'
+
+      - name: Update Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        
           
       - name: Run migrations on Azure
         run: |
