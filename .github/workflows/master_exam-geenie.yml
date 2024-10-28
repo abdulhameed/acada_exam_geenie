@@ -98,13 +98,4 @@ jobs:
           app-name: 'exam-geenie'
           slot-name: 'Production'
 
-      - name: Update Azure CLI
-        run: |
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-        
-          
-      - name: Run migrations on Azure
-        run: |
-          az webapp run-command invoke --name exam-geenie --resource-group YOUR_RESOURCE_GROUP --command "source /home/site/wwwroot/venv/bin/activate && python manage.py makemigrations && python manage.py migrate"
-
   
