@@ -46,10 +46,17 @@ def school_create(request):
 
 def school_detail(request, slug):
     school = get_object_or_404(School, slug=slug)
+
+    if request.user.is_authenticated:
+        template_name = 'schools/school_detail.html'
+    else:
+        template_name = 'schools/anon_school_detail.html'
+
     return render(
         request,
-        'schools/school_detail.html',
-        {'school': school})
+        template_name,
+        {'request': request, 'school': school}
+        )
 
 
 @login_required
