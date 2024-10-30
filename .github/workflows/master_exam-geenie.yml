@@ -49,8 +49,8 @@ jobs:
           ALLOWED_HOSTS: ${{ secrets.ALLOWED_HOSTS }}
           DEBUG: ${{ secrets.DEBUG }}
         run: |
-          python manage.py makemigrations
-          python manage.py migrate
+          python manage.py makemigrations users courses exams analytics notifications core ai_integration schools
+          python manage.py migrate users courses exams analytics notifications core ai_integration schools
         
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
