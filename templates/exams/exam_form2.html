@@ -1,11 +1,15 @@
-{# templates/core/home.html #}
-
 {% extends "core/sidebar_base.html" %}
 
 {% load static %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.39.0/css/tempusdominus-bootstrap-4.min.css">
+<style>
+    .question-count-warning {
+        color: red;
+        display: none;
+    }
+</style>
 {% endblock %}
 
 {% block title %}Create Exam{% endblock %}
@@ -13,7 +17,18 @@
 {% block main_content %}
 <div class="container">
     <h1 class="my-4">{% if form.instance.pk %}Edit Exam{% else %}Create New Exam{% endif %}</h1>
-    <form method="post">
+    
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" id="examForm">
         {% csrf_token %}
         {% for field in form %}
         <div class="mb-3">
@@ -30,6 +45,11 @@
             {% else %}
                 {{ field }}
             {% endif %}
+            
+            {% if field.name == 'number_of_questions' or field.name == 'mcq_questions' or field.name == 'essay_questions' %}
+                <div class="question-count-warning" id="{{ field.name }}-warning"></div>
+            {% endif %}
+            
             {% if field.help_text %}
             <small class="form-text text-muted">{{ field.help_text }}</small>
             {% endif %}
@@ -49,6 +69,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.39.0/js/tempusdominus-bootstrap-4.min.js"></script>
 <script>
     $(function () {
+        // DateTime picker initialization
         $('#datetimepicker1').datetimepicker({
             format: 'YYYY-MM-DD HH:mm',
             icons: {
@@ -64,11 +85,40 @@
             }
         });
 
+        // Duration picker initialization
         $('.timepicker').timepicker({
             showMeridian: false,
             defaultTime: '02:00',
             minuteStep: 5
         });
+
+        // Question count validation
+        function validateQuestionCounts() {
+            const totalQuestions = parseInt($('#id_number_of_questions').val()) || 0;
+            const mcqQuestions = parseInt($('#id_mcq_questions').val()) || 0;
+            const essayQuestions = parseInt($('#id_essay_questions').val()) || 0;
+            const sum = mcqQuestions + essayQuestions;
+
+            const submitBtn = $('button[type="submit"]');
+            
+            if (totalQuestions > 0) {
+                if (sum !== totalQuestions) {
+                    $('#number_of_questions-warning').text(
+                        `Sum of MCQ (${mcqQuestions}) and Essay (${essayQuestions}) questions must equal total questions (${totalQuestions})`
+                    ).show();
+                    submitBtn.prop('disabled', true);
+                } else {
+                    $('#number_of_questions-warning').hide();
+                    submitBtn.prop('disabled', false);
+                }
+            }
+        }
+
+        // Add event listeners for question count fields
+        $('#id_number_of_questions, #id_mcq_questions, #id_essay_questions').on('input', validateQuestionCounts);
+
+        // Initial validation
+        validateQuestionCounts();
     });
 </script>
 {% endblock %}

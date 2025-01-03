@@ -198,9 +198,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-OPENAI_API_KEY = config('OPENAI_API_KEY')
-ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY')
-AI_PROVIDER = 'openai'  # or 'anthropic'
+AZURE_OPENAI_API_KEY = config('AZURE_OPENAI_API_KEY')
+AZURE_OPENAI_ENDPOINT = config('AZURE_OPENAI_ENDPOINT')
+
+# OPENAI_API_KEY = config('OPENAI_API_KEY')
+# ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY')
+# AI_PROVIDER = 'openai'  # or 'anthropic'
 
 # Celery Configuration
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
@@ -230,16 +233,16 @@ celery_app.autodiscover_tasks()
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
+EMAIL_HOST = 'live.smtp.mailtrap.io'
 EMAIL_USE_TLS = True
-
-EMAIL_PORT = 2525
+EMAIL_PORT = '587'
+# EMAIL_PORT = 2525
 
 
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = config('EMAIL_HOST_USER')
-EMAIL_TIMEOUT = 250
+# EMAIL_TIMEOUT = 250
 
 
 CAPTCHA_LENGTH = 6  # Number of characters in captcha

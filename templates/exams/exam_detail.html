@@ -1,8 +1,8 @@
-{% extends 'core/base.html' %}
+{% extends "core/sidebar_base.html" %}
 
 {% block title %}{{ exam.title }}{% endblock %}
 
-{% block content %}
+{% block main_content %}
 <h2>{{ exam.title }}</h2>
 <p><strong>Course:</strong> {{ exam.course.name }} ({{ exam.course.code }})</p>
 <p><strong>Description:</strong> {{ exam.description }}</p>
@@ -28,9 +28,9 @@
 
 <form method="post">
     {% csrf_token %}
-    <p>Current AI Provider: {{ ai_provider }}</p>
+    {# <p>Current AI Provider: {{ ai_provider }}</p> #}
     <button type="submit" name="generate_questions" class="btn btn-primary">Generate Questions</button>
-    <button type="submit" name="switch_ai_provider" class="btn btn-secondary">Switch AI Provider</button>
+    {# <button type="submit" name="switch_ai_provider" class="btn btn-secondary">Switch AI Provider</button> #}
 </form>
 
 {% else %}

@@ -14,6 +14,8 @@ class ExamRoomConsumer(AsyncWebsocketConsumer):
         self.exam_id = self.scope['url_route']['kwargs']['exam_id']
         self.exam_group_name = f'exam_{self.exam_id}'
 
+        print(f"WebSocket connecting for exam {self.exam_id}")  # Debug print
+
         await self.channel_layer.group_add(
             self.exam_group_name,
             self.channel_name
@@ -21,19 +23,35 @@ class ExamRoomConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
+        # Send immediate confirmation of connection
+        await self.send(text_data=json.dumps({
+            'type': 'connection_established',
+            'message': 'Connected to exam room'
+        }))
+
     async def disconnect(self, close_code):
+        print(f"WebSocket disconnecting for exam {self.exam_id}")  # Debug print
         await self.channel_layer.group_discard(
             self.exam_group_name,
             self.channel_name
         )
 
     async def receive(self, text_data):
+        print(f"Received WebSocket message: {text_data}")  # Debug print
         text_data_json = json.loads(text_data)
         message_type = text_data_json['type']
 
         if message_type == 'exam_end':
             student_id = text_data_json['student_id']
             await self.end_exam(student_id)
+        elif message_type == 'exam_start':
+            # Add handling for exam start
+            await self.channel_layer.group_send(
+                self.exam_group_name,
+                {
+                    'type': 'exam_start'
+                }
+            )
 
     async def exam_start(self, event):
         await self.send(text_data=json.dumps({
@@ -41,15 +59,20 @@ class ExamRoomConsumer(AsyncWebsocketConsumer):
         }))
 
     async def exam_end(self, event):
+        print("Sending exam_start event")  # Debug print
         await self.send(text_data=json.dumps({
             'type': 'exam_end'
         }))
 
     @database_sync_to_async
     def end_exam(self, student_id):
-        student_exam = StudentExam.objects.get(student_id=student_id, exam_id=self.exam_id)
-        student_exam.status = 'completed'
-        student_exam.save()
+        try:
+            student_exam = StudentExam.objects.get(student_id=student_id, exam_id=self.exam_id)
+            student_exam.status = 'completed'
+            student_exam.save()
+            print(f"Successfully ended exam for student {student_id}")  # Debug print
+        except Exception as e:
+            print(f"Error ending exam: {str(e)}")  # Debug print
 
 
 class ExamLobbyConsumer(AsyncWebsocketConsumer):

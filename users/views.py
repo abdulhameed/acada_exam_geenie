@@ -33,6 +33,19 @@ class CustomLoginView(LoginView):
 
 
 def student_signup(request, slug, role):
+    """
+    Handles the signup process for students at a specific school.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+        slug (str): The slug of the school the student is signing up for.
+        role (str): The role of the user (in this case, expected to be 'student').
+
+    Returns:
+        HttpResponse: Renders the student signup form for GET requests or invalid POST requests.
+        HttpResponseRedirect: Redirects to the school detail page or student dashboard on successful signup.
+    """
+    # Retrieve the school object using the provided slug or return 404 if not found
     school = get_object_or_404(School, slug=slug)
 
     if request.method == 'POST':

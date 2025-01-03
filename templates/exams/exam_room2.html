@@ -1,0 +1,374 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Exam Room - {{ exam.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    #timer {
+        transition: color 0.5s ease;
+        padding: 10px;
+        border-radius: 5px;
+        display: inline-block;
+    }
+
+    .pulse-animation {
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="content">
+        <h1 class="content-title">Exam Room: {{ exam.title }}</h1>
+
+        <div id="exam-status" class="card">
+            <h2 class="card-title">Exam Status</h2>
+            {% if exam.date > now %}
+                <p>The exam has not started yet. Please wait.</p>
+                <p id="countdown" data-exam-date="{{ exam.date|date:'Y-m-d H:i:s' }}"></p>
+            {% elif student_exam.status == 'in_progress' %}
+                <p>The exam is in progress. Good luck!</p>
+                <p id="timer" class="text-primary"></p>
+            {% elif student_exam.status == 'completed' %}
+                <p>You have completed this exam.</p>
+            {% else %}
+                <p>Waiting for the exam to start...</p>
+            {% endif %}
+        </div>
+
+        <div id="exam-content" class="mt-20" style="display: none;">
+            <div id="mcq-section"></div>
+            <div id="essay-section"></div>
+        </div>
+
+        <button id="submit-exam" class="btn btn-primary mt-20" style="display: none;">Submit Exam</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const examSocket = new WebSocket(
+        'ws://' + window.location.host +
+        '/ws/exam/{{ exam.id }}/'
+    );
+
+    examSocket.onopen = function(e) {
+        console.log('WebSocket connection opened');
+    };
+
+    let endTime;
+
+    examSocket.onmessage = function(e) {
+        console.log('WebSocket message received:', e.data);
+        const data = JSON.parse(e.data);
+        
+        if (data.type === 'connection_established') {
+            console.log('Connection confirmed');
+        } else if (data.type === 'exam_start') {
+            console.log('Exam start message received');
+            startExam();
+        } else if (data.type === 'exam_end') {
+            console.log('Exam end message received');
+            endExam();
+        }
+    };
+
+    // Debugging Starts
+
+    examSocket.onerror = function(error) {
+        console.error('WebSocket error:', error);
+    };
+    examSocket.onclose = function() {
+        console.log('WebSocket connection closed');
+    };
+
+        // Debugging Ends
+
+
+    function startExam() {
+        console.log('Starting exam...');
+        document.getElementById('exam-status').innerHTML = '<p>The exam has started. Good luck!</p><p id="timer"></p>';
+        document.getElementById('exam-content').style.display = 'block';
+        loadExamContent();
+        startTimer();
+        document.getElementById('submit-exam').style.display = 'block';
+    }
+
+    function loadExamContent() {
+        console.log('Loading exam content...');
+        fetch('/api/exam-content/{{ exam.id }}/')
+            .then(response => {
+                console.log('Raw response:', response);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Received exam content:', data);
+                const mcqSection = document.getElementById('mcq-section');
+                const essaySection = document.getElementById('essay-section');
+
+                if (!mcqSection || !essaySection) {
+                    console.error('Could not find MCQ or essay sections');
+                    return;
+                }
+
+                // Initialize containers
+                
+                mcqSection.innerHTML = '<h2>Multiple Choice Questions</h2>';
+                essaySection.innerHTML = '<h2>Essay Questions</h2>';
+
+                // Check if we have questions
+                if (!data.mcq_questions || !data.essay_questions) {
+                    console.error('No questions found in response');
+                    return;
+                }
+
+                // Render MCQ questions
+                data.mcq_questions.forEach((question, index) => {
+                    console.log('Rendering MCQ question:', question);
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = 'question-container mb-4';
+                    let optionsHtml = '';
+                    
+                    question.options.forEach(option => {
+                        optionsHtml += `
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" 
+                                    name="mcq-${question.id}" 
+                                    id="option-${question.id}-${option.id}" 
+                                    value="${option.id}"
+                                    onchange="saveMCQAnswer(${question.id}, this.value)">
+                                <label class="form-check-label" for="option-${question.id}-${option.id}">
+                                    ${option.order}) ${option.text}
+                                </label>
+                            </div>
+                        `;
+                    });
+
+                    questionDiv.innerHTML = `
+                        <div class="card p-3 mb-3">
+                            <h4>Question ${index + 1}</h4>
+                            <p class="question-text">${question.text}</p>
+                            <div class="options-container">
+                                ${optionsHtml}
+                            </div>
+                        </div>
+                    `;
+                    mcqSection.appendChild(questionDiv);
+                });
+
+                // Render essay questions
+                data.essay_questions.forEach((question, index) => {
+                    console.log('Rendering essay question:', question);
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = 'question-container mb-4';
+                    questionDiv.innerHTML = `
+                        <div class="card p-3 mb-3">
+                            <h4>Question ${index + 1}</h4>
+                            <p class="question-text">${question.text}</p>
+                            <textarea id="answer-${question.id}" 
+                                    class="form-control" 
+                                    rows="6" 
+                                    placeholder="Type your answer here..."
+                                    onblur="saveEssayAnswer(${question.id}, this.value)"></textarea>
+                        </div>
+                    `;
+                    essaySection.appendChild(questionDiv);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading exam content:', error);
+            });
+    }
+
+    function saveMCQAnswer(questionId, optionId) {
+        const formData = new FormData();
+        formData.append('question_id', questionId);
+        formData.append('option_id', optionId);
+
+        fetch('/api/save-mcq-answer/{{ exam.id }}/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('MCQ answer saved successfully');
+            } else {
+                console.error('Failed to save MCQ answer');
+            }
+        });
+    }
+
+    function saveEssayAnswer(questionId, answerText) {
+        const formData = new FormData();
+        formData.append('question_id', questionId);
+        formData.append('answer_text', answerText);
+
+        fetch('/api/save-essay-answer/{{ exam.id }}/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('Essay answer saved successfully');
+            } else {
+                console.error('Failed to save essay answer');
+            }
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+
+    /*
+    function startTimer() {
+        const startTime = new Date();
+        endTime = new Date(startTime.getTime() + {{ exam.duration.total_seconds }} * 1000);
+        updateTimer();
+        setInterval(updateTimer, 1000);
+    }
+        */
+
+    
+    function startTimer() {
+        const startTime = new Date();
+        // Use parseInt to make sure it's treated as a number, and wrap it in quotes
+        const duration = parseInt('{{ exam.duration.total_seconds|default:"0" }}', 10);
+        if (!isNaN(duration)) {
+            endTime = new Date(startTime.getTime() + duration * 1000);
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        } else {
+            console.error('Invalid duration value:', '{{ exam.duration.total_seconds }}');
+        }
+    }
+
+
+    function updateTimer() {
+        const now = new Date().getTime();
+        const timeLeft = endTime - now;
+
+        if (timeLeft <= 0) {
+            endExam();
+        } else {
+            const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+            // Calculate total duration in milliseconds
+            const totalDuration = {{ exam.duration.total_seconds }} * 1000;
+            const percentageLeft = (timeLeft / totalDuration) * 100;
+
+            // Get timer element
+            const timerElement = document.getElementById('timer');
+            
+            // Set color based on time remaining
+            let color;
+            if (percentageLeft > 50) {
+                // Green from 100% to 50%
+                color = '#28a745';
+            } else if (percentageLeft > 25) {
+                // Amber from 50% to 25%
+                color = '#ffc107';
+            } else {
+                // Red for last 25%
+                color = '#dc3545';
+            }
+
+            // Update timer text and style
+            timerElement.innerHTML = `Time remaining: ${hours}h ${minutes}m ${seconds}s`;
+            timerElement.style.color = color;
+            timerElement.style.fontWeight = percentageLeft <= 25 ? 'bold' : 'normal';
+
+            // Add animation class when entering a new color zone
+            if (percentageLeft <= 25) {
+                timerElement.classList.add('pulse-animation');
+            } else {
+                timerElement.classList.remove('pulse-animation');
+            }
+        }
+    }
+
+    function endExam() {
+        document.getElementById('exam-status').innerHTML = '<p>The exam has ended. Thank you for participating.</p>';
+        document.getElementById('exam-content').style.display = 'none';
+        document.getElementById('submit-exam').style.display = 'none';
+        examSocket.send(JSON.stringify({
+            'type': 'exam_end',
+            'student_id': '{{ request.user.id }}'
+        }));
+    }
+
+    function updateCountdown() {
+        const countdownElement = document.getElementById('countdown');
+        if (countdownElement) {
+            const examDate = new Date(countdownElement.dataset.examDate).getTime();
+            const now = new Date().getTime();
+            const distance = examDate - now;
+
+            if (distance < 0) {
+                countdownElement.innerHTML = "Exam is starting...";
+                return;
+            }
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            countdownElement.innerHTML = `Time until exam starts: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
+    }
+
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    // Immediately start the exam if it's already in progress
+    {% if student_exam.status == 'in_progress' %}
+        console.log('Exam is in progress, starting immediately...');
+        startExam();
+    {% endif %}
+
+    // Handle early submission
+    document.getElementById('submit-exam').addEventListener('click', function() {
+        if (confirm('Are you sure you want to submit your exam? This action cannot be undone.')) {
+            endExam();
+        }
+    });
+</script>
+{% endblock %}
