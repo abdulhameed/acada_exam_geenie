@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from schools.models import School
+from django.utils.crypto import get_random_string
 
 
 # student, lecturer, hod, school_admin
@@ -49,3 +50,16 @@ class CustomUser(AbstractUser):
 
     def can_create_course_content(self, course):
         return self.is_school_admin or self.is_lecturer_for_course(course)
+
+
+class RegistrationInvite(models.Model):
+    email = models.EmailField()
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = get_random_string(64)
+        super().save(*args, **kwargs)

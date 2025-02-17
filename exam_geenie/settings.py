@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'django.contrib.sites',
     "users",
     "courses",
     "exams",
@@ -65,6 +66,8 @@ INSTALLED_APPS = [
     'channels',
     'captcha',
 ]
+
+SITE_ID = 1
 
 if DEBUG:
 
@@ -233,7 +236,8 @@ celery_app.autodiscover_tasks()
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'live.smtp.mailtrap.io'
+EMAIL_HOST = 'smtp.zoho.com'
+# EMAIL_HOST = 'live.smtp.mailtrap.io'
 EMAIL_USE_TLS = True
 EMAIL_PORT = '587'
 # EMAIL_PORT = 2525
@@ -249,3 +253,10 @@ CAPTCHA_LENGTH = 6  # Number of characters in captcha
 CAPTCHA_TIMEOUT = 5  # Minutes before captcha expires
 CAPTCHA_NOISE_FUNCTIONS = ('captcha.helpers.noise_dots',)  # Add noise to make it harder for bots
 CAPTCHA_CHALLENGE_FUNCT = 'captcha.helpers.random_char_challenge'  # Use random characters
+
+
+# CELERY SERVER COMMANDS
+
+# celery -A exam_geenie worker --loglevel=info
+# celery -A exam_geenie beat --loglevel=info
+# celery -A exam_geenie worker --beat --loglevel=info
