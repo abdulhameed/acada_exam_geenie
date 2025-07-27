@@ -29,4 +29,4 @@ The AI Exam Management System is designed to assist university lecturers in auto
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/exam_geenie.git
+   git clone https://github.com/abdulhameed/exam_geenie.git
