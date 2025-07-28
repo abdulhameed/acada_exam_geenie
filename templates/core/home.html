@@ -1,0 +1,151 @@
+{# templates/core/home.html #}
+
+{% extends "core/sidebar_base.html" %}
+    {# {% extends 'core/base.html' %} #}
+
+{% block title %}Home - Exam Geenie{% endblock %}
+
+{% block main_content %}
+<h1 class="mb-4">Welcome to the Exam Geenie</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="card-title h5 mb-0">Your Courses</h2>
+            </div>
+            <div class="card-body">
+                {% if user.role == 'student' %}
+                    {% if enrolled_courses %}
+                        <ul class="list-group">
+                            {% for course in enrolled_courses %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'course_detail' course.pk %}">{{ course.name }} ({{ course.code }})</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>You are not enrolled in any courses.</p>
+                    {% endif %}
+                    <a href="{% url 'course_registration' %}" class="btn btn-primary mt-3">Register for Courses</a>
+                {% elif user.role in 'lecturer,hod,school_admin' %}
+                    {% if courses_taught %}
+                        <ul class="list-group">
+                            {% for course in courses_taught %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'course_detail' course.pk %}">{{ course.name }} ({{ course.code }})</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>You are not teaching any courses.</p>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="card-title h5 mb-0">Upcoming Exams</h2>
+            </div>
+            <div class="card-body">
+                {% if upcoming_exams %}
+                    <ul class="list-group">
+                        {% for exam in upcoming_exams %}
+                            <li class="list-group-item">
+                                <a href="{% url 'exam_detail' exam.pk %}">{{ exam.title }}</a>
+                                <br>
+                                <small class="text-muted">{{ exam.date|date:"F d, Y H:i" }}</small>
+                                <br>
+                                <small class="countdown" data-exam-date="{{ exam.date|date:'Y-m-d H:i:s' }}"></small>
+                                {% if user.role == 'student' %}
+                                    <br>
+                                    <a href="{% url 'exam_room' exam.pk %}" class="btn btn-sm btn-primary mt-2 exam-room-link" data-exam-id="{{ exam.pk }}">Enter Exam Room</a>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No upcoming exams.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if user.role == 'student' %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title h5 mb-0">Exam Room</h2>
+            </div>
+            <div class="card-body">
+                <p>Click the button below to enter the exam room. Your upcoming exam will start automatically when the countdown reaches zero.</p>
+                <a href="{% url 'exam_room' %}" class="btn btn-primary">Enter Exam Room</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if user.role == 'lecturer' or user.role == 'hod' or user.role == 'school_admin' %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <h2 class="h4 mb-3">Quick Actions</h2>
+        <a href="{% url 'course_create' %}" class="btn btn-primary me-2">Create New Course</a>
+        <a href="{% url 'exam_create' %}" class="btn btn-secondary me-2">Create New Exam</a>
+        <a href="{% url 'course_assignment' %}" class="btn btn-info">Assign Courses to Students</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+function updateCountdown() {
+    const countdowns = document.querySelectorAll('.countdown');
+    countdowns.forEach(countdown => {
+        const examDate = new Date(countdown.dataset.examDate).getTime();
+        const now = new Date().getTime();
+        const distance = examDate - now;
+
+        if (distance < 0) {
+            countdown.innerHTML = "Exam has started";
+            const examRoomLink = countdown.parentElement.querySelector('.exam-room-link');
+            if (examRoomLink) {
+                examRoomLink.classList.remove('btn-primary');
+                examRoomLink.classList.add('btn-success');
+                examRoomLink.textContent = 'Start Exam';
+            }
+        } else {
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            countdown.innerHTML = `Time remaining: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
+    });
+}
+
+setInterval(updateCountdown, 1000);
+updateCountdown();
+// Add event listeners to exam room links
+document.querySelectorAll('.exam-room-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+        const examId = this.dataset.examId;
+        const countdown = this.parentElement.querySelector('.countdown');
+        if (countdown && countdown.textContent === "Exam has started") {
+            // Allow the link to work normally
+        } else {
+            e.preventDefault();
+            alert('The exam has not started yet. Please wait for the countdown to finish.');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+# Python
+*.pyc
+__pycache__/
+
+# Django
+*.sqlite3
+/db.sqlite3
+
+# Environment variables
+.env
+
+# Virtual environment
+venv/
+myprojectenv/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+
+
+# Misc
+
+env/
+# __pycache__/
+# *.pyc
+*.pyo
+.DS_Store
+# db.sqlite3
+media/
+/media/
+media/*
+staticfiles/
+
+# Ignore Django migration files
+*/migrations/
+*/migrations/*.pyc

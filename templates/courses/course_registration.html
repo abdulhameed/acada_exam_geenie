@@ -1,0 +1,57 @@
+{# 'templates/courses/course_registration.html' #}
+{% extends "core/sidebar_base.html" %}
+
+{% block title %}Course Registration - Exam Geenie{% endblock %}
+
+{% block main_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <h2 class="card-title">Course Registration</h2>
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="{{ form.courses.id_for_label }}" class="form-label">Available Courses:</label>
+                        <div class="custom-scrollbar" style="max-height: 300px; overflow-y: auto;">
+                            {% for course in form.courses %}
+                                <div class="custom-checkbox">
+                                    {{ course }}
+                                    <label for="{{ course.id_for_label }}">
+                                        {{ course.choice_label }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Register for Selected Courses</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #888;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+{% endblock %}

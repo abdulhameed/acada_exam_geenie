@@ -1,0 +1,47 @@
+{% extends "core/sidebar_base.html" %}
+
+{% block title %}{{ course.name }}{% endblock %}
+
+
+
+{% block main_content %}
+<div class="container">
+    <h1 class="my-4">{{ course.name }} ({{ course.code }})</h1>
+    <p><strong>Lecturer:</strong> {{ course.lecturer.get_full_name }}</p>
+    <p><strong>Description:</strong> {{ course.description }}</p>
+
+    <h2 class="mt-4">Course Contents</h2>
+    {# {% if user.can_create_course_content %} #}
+    <a href="{% url 'course_content_create' course.id %}" class="btn btn-primary mb-3">Add Content</a>
+    {# {% endif %} #}
+    <div class="list-group">
+        {% for content in contents %}
+        <div class="list-group-item">
+            <h5 class="mb-1">{{ content.title }}</h5>
+            <p class="mb-1">Uploaded on: {{ content.uploaded_at|date:"F d, Y" }}</p>
+            <a href="{{ content.pdf_file.url }}" class="btn btn-sm btn-secondary" target="_blank">View PDF</a>
+        </div>
+        {% empty %}
+        <p>No content available for this course.</p>
+        {% endfor %}
+    </div>
+
+    {% if user.can_create_course_content %}
+    <a href="{% url 'course_update' course.id %}" class="btn btn-warning mt-3">Edit Course</a>
+    {% endif %}
+    <a href="{% url 'course_list' %}" class="btn btn-secondary mt-3">Back to Course List</a>
+</div>
+{% endblock %}
+
+
+{% comment %}
+{% block content %}
+<h2>{{ course.name }}</h2>
+<p><strong>Code:</strong> {{ course.code }}</p>
+<p><strong>School:</strong> {{ course.school.name }}</p>
+<p><strong>Lecturer:</strong> {{ course.lecturer.get_full_name }}</p>
+<p><strong>Description:</strong> {{ course.description }}</p>
+<p><strong>Created:</strong> {{ course.created_at }}</p>
+<p><strong>Last Updated:</strong> {{ course.updated_at }}</p>
+{% endblock %}
+{% endcomment %}

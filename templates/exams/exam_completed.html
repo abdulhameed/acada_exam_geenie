@@ -1,0 +1,12 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Exam Completed - Exam Geenie{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Exam Completed</h1>
+<div class="alert alert-success mb-4">
+    You have successfully completed the exam: {{ exam.title }}
+</div>
+<p>Your answers have been submitted and will be graded shortly.</p>
+<a href="{% url 'home' %}" class="btn btn-primary">Return to Home</a>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "core/sidebar_base.html" %}
+
+{% block title %}Course Assignment - Exam Geenie{% endblock %}
+
+{% block main_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <h2 class="card-title">Course Assignment</h2>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="student" class="form-label">Select Student:</label>
+                        <select name="student" id="student" class="form-control" required>
+                            <option value="">Choose a student...</option>
+                            {% for student in students %}
+                                <option value="{{ student.id }}">{{ student.username }} ({{ student.email }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group mt-3">
+                        <label for="course" class="form-label">Select Course:</label>
+                        <select name="course" id="course" class="form-control" required>
+                            <option value="">Choose a course...</option>
+                            {% for course in courses %}
+                                <option value="{{ course.id }}">{{ course.name }} ({{ course.code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3">Assign Course</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <h3 class="card-title">Current Assignments</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Courses</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                                <tr>
+                                    <td>{{ student.username }}</td>
+                                    <td>
+                                        <ul>
+                                            {% for course in student.enrolled_courses.all %}
+                                                <li>{{ course.name }} ({{ course.code }})</li>
+                                            {% empty %}
+                                                <li>No courses assigned</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
