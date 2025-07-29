@@ -1,0 +1,58 @@
+{% extends "core/sidebar_base.html" %}
+
+{% block title %}Register at {{ school.name }}{% endblock %}
+
+{% block main_content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title">
+                        <i class="fas fa-graduation-cap me-2"></i>
+                        Register at {{ school.name }}
+                    </h2>
+                    
+                    <p class="card-text text-muted mb-4">
+                        Enter your email address below to receive a registration link.
+                    </p>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.email.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-envelope me-2"></i>
+                                Send Registration Link
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="mt-3 small text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Already have an account? 
+                        <a href="{% url 'login' %}" class="text-primary text-decoration-none">
+                            Sign in here
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

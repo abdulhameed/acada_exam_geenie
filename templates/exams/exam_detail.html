@@ -1,0 +1,44 @@
+{% extends "core/sidebar_base.html" %}
+
+{% block title %}{{ exam.title }}{% endblock %}
+
+{% block main_content %}
+<h2>{{ exam.title }}</h2>
+<p><strong>Course:</strong> {{ exam.course.name }} ({{ exam.course.code }})</p>
+<p><strong>Description:</strong> {{ exam.description }}</p>
+<p><strong>Date:</strong> {{ exam.date }}</p>
+<p><strong>Duration:</strong> {{ exam.duration }}</p>
+<p><strong>Number of Questions:</strong> {{ exam.number_of_questions }}</p>
+<p><strong>Difficulty:</strong> {{ exam.get_difficulty_display }}</p>
+<p><strong>Unique Questions:</strong> {{ exam.unique_questions|yesno:"Yes,No" }}</p>
+<p><strong>Created:</strong> {{ exam.created_at }}</p>
+<p><strong>Last Updated:</strong> {{ exam.updated_at }}</p>
+
+{% if user.role == 'lecturer' or user.role == 'hod' or user.role == 'school_admin' %}
+<h3>Questions</h3>
+{% if questions %}
+    <ul>
+    {% for question in questions %}
+        <li>{{ question.text }}</li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No questions generated yet.</p>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    {# <p>Current AI Provider: {{ ai_provider }}</p> #}
+    <button type="submit" name="generate_questions" class="btn btn-primary">Generate Questions</button>
+    {# <button type="submit" name="switch_ai_provider" class="btn btn-secondary">Switch AI Provider</button> #}
+</form>
+
+{% else %}
+    <p>Exam questions will be available when you start the exam.</p>
+{% endif %}
+
+{% if user.role == 'student' and exam.date > now %}
+    <a href="{% url 'take_exam' exam.pk %}" class="btn btn-primary mt-3">Take Exam</a>
+{% endif %}
+
+{% endblock %}

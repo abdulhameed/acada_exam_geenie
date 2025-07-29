@@ -1,0 +1,119 @@
+{% comment %}
+{% extends 'core/base.html' %}
+
+{% block title %}{{ exam.title }} - Exam Geenie{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{{ exam.title }}</h1>
+<div id="exam-timer" class="alert alert-primary mb-4" data-duration="{{ time_remaining }}"></div>
+<form method="post">
+    {% csrf_token %}
+    {% for question in questions %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Question {{ forloop.counter }}</h5>
+            <p class="card-text">{{ question.text }}</p>
+            <textarea name="question_{{ question.id }}" class="form-control" rows="4"></textarea>
+        </div>
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary btn-block">Submit Exam</button>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Exam timer logic
+    const timerElement = document.getElementById('exam-timer');
+    let duration = parseInt(timerElement.dataset.duration);
+    
+    function updateTimer() {
+        const hours = Math.floor(duration / 3600);
+        const minutes = Math.floor((duration % 3600) / 60);
+        const seconds = duration % 60;
+        timerElement.textContent = `Time remaining: ${hours}:${minutes}:${seconds}`;
+        
+        if (duration <= 0) {
+            document.querySelector('form').submit();
+        } else {
+            duration--;
+            setTimeout(updateTimer, 1000);
+        }
+    }
+    
+    updateTimer();
+</script>
+{% endblock %}
+
+{% endcomment %}
+
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>{{ exam.title }}</h1>
+<div id="timer"></div>
+<form id="exam-form" method="post">
+    {% csrf_token %}
+    {% for question in questions %}
+        <div class="question">
+            <p>{{ question.text }}</p>
+            <textarea name="question_{{ question.id }}"></textarea>
+        </div>
+    {% endfor %}
+    <button type="submit">Submit Exam</button>
+</form>
+
+<script>
+    const examSocket = new WebSocket(
+        'ws://' + window.location.host +
+        '/ws/exam/{{ exam.id }}/'
+    );
+
+    examSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        if (data.type === 'exam_started') {
+            startExam();
+        } else if (data.type === 'exam_ended') {
+            endExam();
+        }
+    };
+
+    function startExam() {
+        // Enable form fields, start timer, etc.
+    }
+
+    function endExam() {
+        document.getElementById('exam-form').submit();
+    }
+
+    // Countdown timer
+    let timeRemaining = {{ time_remaining }};
+    const timerElement = document.getElementById('timer');
+
+    function updateTimer() {
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            examSocket.send(JSON.stringify({
+                'type': 'end_exam',
+                'student_id': '{{ request.user.id }}'
+            }));
+        }
+        
+        timeRemaining--;
+    }
+
+    const timerInterval = setInterval(updateTimer, 1000);
+
+    // Start exam when the page loads
+    window.onload = function() {
+        examSocket.send(JSON.stringify({
+            'type': 'start_exam',
+            'student_id': '{{ request.user.id }}'
+        }));
+    };
+</script>
+{% endblock %}

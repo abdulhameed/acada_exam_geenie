@@ -1,0 +1,88 @@
+{% extends "core/sidebar_base.html" %}
+{% load static %}
+
+{% block title %}Exam Lobby{% endblock %}
+
+{% block main_content %}
+<div class="container-fluid">
+        <h1 class="content-title mb-4">Exam Lobby</h1>
+
+        <div class="card">
+            <h2 class="card-title">Today's Exams</h2>
+            {% if todays_exams %}
+                <div class="row">
+                    {% for exam in todays_exams %}
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="card m-10">
+                                <h3 class="card-title">{{ exam.title }}</h3>
+                                <p>Time: {{ exam.date|date:"H:i" }}</p>
+                                <p class="countdown" data-exam-date="{{ exam.date|date:'Y-m-d H:i:s' }}"></p>
+                                <a href="{% url 'exam_room' exam.id %}" class="btn btn-primary start-exam-btn" data-exam-id="{{ exam.id }}" style="display: none;">Start Exam</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>No exams scheduled for today.</p>
+            {% endif %}
+        </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateCountdowns() {
+    const countdowns = document.querySelectorAll('.countdown');
+    countdowns.forEach(countdown => {
+        const examDate = new Date(countdown.dataset.examDate).getTime();
+        const now = new Date().getTime();
+        const distance = examDate - now;
+
+        const startExamBtn = countdown.nextElementSibling;
+
+        if (distance <= 0) {
+            countdown.innerHTML = "Exam has started";
+            startExamBtn.style.display = "inline-block";
+        } else {
+            const hours = Math.floor(distance / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            countdown.innerHTML = `Time until exam: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            startExamBtn.style.display = "none";
+        }
+    });
+}
+
+setInterval(updateCountdowns, 1000);
+updateCountdowns();
+
+// WebSocket connection
+const examLobbySocket = new WebSocket(
+    'ws://' + window.location.host + '/ws/exam_lobby/'
+);
+
+examLobbySocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    console.log(data.message);
+    // You can add more logic here to handle different types of messages
+};
+
+examLobbySocket.onclose = function(e) {
+    console.error('Exam lobby socket closed unexpectedly');
+};
+
+// Update the start exam button click event
+document.querySelectorAll('.start-exam-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const examId = this.dataset.examId;
+        examLobbySocket.send(JSON.stringify({
+            'type': 'exam_start',
+            'exam_id': examId
+        }));
+        window.location.href = this.href;
+    });
+});
+</script>
+{% endblock %}
