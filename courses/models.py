@@ -115,6 +115,3 @@ class QuestionTemplate(models.Model):
         
         return ""
     
-# 
-# git commit -m "Add Course, CourseContent, and QuestionTemplate models with file handling"
-# git push origin main
