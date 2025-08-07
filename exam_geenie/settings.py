@@ -41,7 +41,7 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,examgenie.online', cast=Csv())
 
-CSRF_TRUSTED_ORIGINS = ['https://exam-geenie-avegdeesaufpbmdp.northeurope-01.azurewebsites.net']
+CSRF_TRUSTED_ORIGINS = ['https://examgenie.net']
 
 # Application definition
 
