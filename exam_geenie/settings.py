@@ -39,7 +39,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,examgenie.online', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,examgenie.net,www.examgenie.net', cast=Csv())
 
 # CSRF_TRUSTED_ORIGINS = ['https://examgenie.net']
 CSRF_TRUSTED_ORIGINS = [
