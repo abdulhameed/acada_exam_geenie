@@ -34,6 +34,10 @@ media/
 media/*
 staticfiles/
 
-# Ignore Django migration files
-*/migrations/
+# Ignore Python cache files in migrations
+*/migrations/__pycache__/
 */migrations/*.pyc
+
+# Ignore Django migration files
+# */migrations/
+# */migrations/*.pyc
