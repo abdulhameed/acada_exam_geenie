@@ -72,6 +72,7 @@ numpy==1.26.4
 openai==1.42.0
 orjson==3.10.7
 packaging==24.1
+pandas==2.0.3
 pillow==11.0.0
 prompt_toolkit==3.0.47
 proto-plus==1.25.0
@@ -95,7 +96,8 @@ python-magic==0.4.27
 pytz==2024.1
 PyYAML==6.0.2
 redis==5.0.8
-requests==2.32.3
+reportlab==4.0.4
+requests==2.31.0
 rsa==4.9
 service-identity==24.1.0
 six==1.16.0
@@ -118,4 +120,5 @@ wcwidth==0.2.13
 webencodings==0.5.1
 whitenoise==6.7.0
 yarl==1.9.4
+youtube-transcript-api==0.6.0
 zope.interface==7.0.3

@@ -26,14 +26,18 @@ class Course(models.Model):
 
 
 class CourseContent(models.Model):
-    course = models.ForeignKey(
-        Course,
-        on_delete=models.CASCADE,
-        related_name='contents'
-        )
-    title = models.CharField(max_length=200)
-    pdf_file = models.FileField(upload_to='course_contents/')
-    uploaded_at = models.DateTimeField(auto_now_add=True)
+    CONTENT_TYPES = [
+        ('pdf', 'PDF Document'),
+        ('text', 'Text Content'),
+        ('transcript', 'Video Transcript'),
+    ]
+    
+    title = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=20, choices=CONTENT_TYPES)
+    file_upload = models.FileField(upload_to='course_materials/', null=True, blank=True)
+    text_content = models.TextField(null=True, blank=True)  # New field
+    source_identifier = models.CharField(max_length=100, null=True, blank=True)  # LearningQ question ID
+    research_mode = models.BooleanField(default=False)  # Flag for research questions
 
     def __str__(self):
         return f"{self.course.code} - {self.title}"

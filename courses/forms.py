@@ -11,7 +11,7 @@ class CourseForm(forms.ModelForm):
 class CourseContentForm(forms.ModelForm):
     class Meta:
         model = CourseContent
-        fields = ['title', 'pdf_file']
+        fields = ['title', 'content_type', 'file_upload', 'text_content', 'source_identifier', 'research_mode']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'pdf_file': forms.FileInput(attrs={'class': 'form-control'}),

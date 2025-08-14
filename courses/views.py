@@ -1,13 +1,13 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 from courses.forms import CourseContentForm, CourseForm
-from courses.models import Course
+from courses.models import Course, CourseContent
 from django.core.exceptions import PermissionDenied
 from django.views.generic import ListView
+from django.views.generic.edit import CreateView, FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.urls import reverse_lazy
-from django.views.generic.edit import FormView
 
 from users.models import CustomUser
 from .forms import CourseRegistrationForm
@@ -118,3 +118,17 @@ class CourseAssignmentView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['courses'] = Course.objects.filter(school=self.request.user.school)
         return context
+
+
+class ResearchContentCreateView(LoginRequiredMixin, CreateView):
+    model = CourseContent
+    fields = ['title', 'text_content', 'source_identifier']
+    template_name = 'courses/research_content_form.html'
+    
+    def form_valid(self, form):
+        form.instance.content_type = 'text'
+        form.instance.research_mode = True
+        form.instance.course = self.request.user.school.courses.first()  # Or specify
+        return super().form_valid(form)
+# 
+# git push origin main

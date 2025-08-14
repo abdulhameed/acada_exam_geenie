@@ -43,6 +43,8 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,examgenie.online', ca
 
 CSRF_TRUSTED_ORIGINS = ['https://exam-geenie-avegdeesaufpbmdp.northeurope-01.azurewebsites.net']
 
+AUTH_USER_MODEL = 'users.CustomUser'
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -164,8 +166,6 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-
-AUTH_USER_MODEL = 'users.CustomUser'
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
