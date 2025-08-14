@@ -119,3 +119,189 @@ class QuestionTemplate(models.Model):
         
         return ""
     
+# Add these new models to your existing courses/models.py file
+
+class ExpertQuestionDataset(models.Model):
+    """Store expert question datasets like LearningQ"""
+    name = models.CharField(max_length=200, help_text="Dataset name (e.g., 'LearningQ Research Sample')")
+    description = models.TextField(blank=True)
+    source_type = models.CharField(
+        max_length=50,
+        choices=[
+            ('research', 'Research Dataset'),
+            ('custom', 'Custom Expert Questions'),
+            ('imported', 'Imported Questions'),
+        ],
+        default='research'
+    )
+    upload_date = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['-upload_date']
+    
+    def __str__(self):
+        return self.name
+
+
+class ExpertQuestion(models.Model):
+    """Individual expert questions from research datasets"""
+    dataset = models.ForeignKey(ExpertQuestionDataset, on_delete=models.CASCADE, related_name='questions')
+    question_id = models.CharField(max_length=200, unique=True)  # Original question ID from dataset
+    question_text = models.TextField()
+    question_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('MCQ', 'Multiple Choice Question'),
+            ('ESSAY', 'Essay Question'),
+            ('SHORT_ANSWER', 'Short Answer'),
+            ('TRUE_FALSE', 'True/False'),
+        ]
+    )
+    source_material = models.TextField(blank=True, help_text="Original educational content")
+    domain = models.CharField(max_length=100, blank=True)  # Subject area
+    difficulty_level = models.CharField(
+        max_length=20,
+        choices=[
+            ('easy', 'Easy'),
+            ('medium', 'Medium'),
+            ('hard', 'Hard'),
+            ('unknown', 'Unknown'),
+        ],
+        default='unknown'
+    )
+    
+    # Additional metadata from LearningQ
+    video_title = models.CharField(max_length=500, blank=True)
+    video_youtube_link = models.URLField(blank=True)
+    video_id = models.CharField(max_length=100, blank=True)
+    file_source = models.CharField(max_length=200, blank=True)
+    
+    # Usage tracking
+    times_used_as_template = models.IntegerField(default=0)
+    quality_rating = models.FloatField(null=True, blank=True, help_text="Expert quality rating (1-5)")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['question_id']
+        indexes = [
+            models.Index(fields=['question_type', 'domain']),
+            models.Index(fields=['difficulty_level']),
+        ]
+    
+    def __str__(self):
+        return f"{self.question_id}: {self.question_text[:50]}..."
+
+
+class EnhancedCourseContent(models.Model):
+    """Extended course content supporting multiple file formats"""
+    CONTENT_TYPES = [
+        ('PDF', 'PDF Document'),
+        ('DOCX', 'Word Document'),
+        ('TXT', 'Text File'),
+        ('CSV', 'Expert Questions (CSV)'),
+        ('JSON', 'Expert Questions (JSON)'),
+        ('VIDEO', 'Video Transcript'),
+        ('URL', 'Web Content'),
+    ]
+    
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enhanced_contents')
+    title = models.CharField(max_length=200)
+    content_type = models.CharField(max_length=20, choices=CONTENT_TYPES)
+    
+    # File uploads
+    content_file = models.FileField(
+        upload_to='enhanced_course_contents/',
+        null=True, 
+        blank=True,
+        help_text="Upload PDF, DOCX, TXT, CSV, or JSON file"
+    )
+    
+    # Direct text input
+    text_content = models.TextField(blank=True, help_text="Or paste content directly")
+    
+    # URL for web content
+    content_url = models.URLField(blank=True, help_text="URL for web-based content")
+    
+    # Processing status
+    is_processed = models.BooleanField(default=False)
+    processing_status = models.CharField(
+        max_length=50,
+        choices=[
+            ('pending', 'Pending Processing'),
+            ('processing', 'Processing'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed'),
+        ],
+        default='pending'
+    )
+    processing_error = models.TextField(blank=True)
+    
+    # Extracted content
+    extracted_text = models.TextField(blank=True, help_text="Processed text content")
+    word_count = models.IntegerField(default=0)
+    
+    # Metadata
+    uploaded_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    last_processed = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-uploaded_at']
+    
+    def __str__(self):
+        return f"{self.course.code} - {self.title} ({self.content_type})"
+    
+    def process_content(self):
+        """Extract and process content based on file type"""
+        from .content_processors import ContentProcessor
+        processor = ContentProcessor()
+        return processor.process_content(self)
+
+
+class QuestionGenerationTemplate(models.Model):
+    """Templates for AI question generation using expert questions"""
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='generation_templates')
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    
+    # Expert question filters
+    use_expert_questions = models.BooleanField(default=True)
+    expert_question_domains = models.CharField(
+        max_length=500, 
+        blank=True, 
+        help_text="Comma-separated domains to include (e.g., 'Science,Math')"
+    )
+    expert_question_types = models.CharField(
+        max_length=100,
+        choices=[
+            ('MCQ', 'MCQ Only'),
+            ('ESSAY', 'Essay Only'),
+            ('MIXED', 'Mixed Types'),
+        ],
+        default='MIXED'
+    )
+    
+    # Generation settings
+    similarity_threshold = models.FloatField(
+        default=0.7, 
+        help_text="Minimum similarity to expert questions (0.0-1.0)"
+    )
+    max_expert_examples = models.IntegerField(
+        default=5,
+        help_text="Maximum expert questions to use as examples"
+    )
+    
+    # AI prompt customization
+    custom_prompt_prefix = models.TextField(
+        blank=True,
+        help_text="Custom instructions to add to AI prompts"
+    )
+    
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.course.code} - {self.name}"
