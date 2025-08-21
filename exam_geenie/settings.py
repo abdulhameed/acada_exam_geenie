@@ -259,4 +259,4 @@ CAPTCHA_CHALLENGE_FUNCT = 'captcha.helpers.random_char_challenge'  # Use random 
 
 # celery -A exam_geenie worker --loglevel=info
 # celery -A exam_geenie beat --loglevel=info
-# celery -A exam_geenie worker --beat --loglevel=info
+# celery -A exam_geenie worker --beat --loglevel=info   # celery and beat in one command

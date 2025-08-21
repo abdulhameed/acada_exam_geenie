@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from schools.models import School
 from users.models import CustomUser
 
@@ -182,13 +183,51 @@ class ExpertQuestion(models.Model):
     quality_rating = models.FloatField(null=True, blank=True, help_text="Expert quality rating (1-5)")
     
     created_at = models.DateTimeField(auto_now_add=True)
+
+    is_missing_source = models.BooleanField(
+        default=False, 
+        help_text='Indicates if this question is missing source material'
+    )
+    source_recovery_attempted = models.BooleanField(
+        default=False, 
+        help_text='Indicates if source recovery has been attempted for this question'
+    )
+    source_recovery_date = models.DateTimeField(
+        blank=True, 
+        null=True, 
+        help_text='When source material was last recovered or attempted'
+    )
+    
+    def save(self, *args, **kwargs):
+        """Auto-update is_missing_source flag when saving"""
+        self.is_missing_source = not bool(self.source_material and self.source_material.strip())
+        super().save(*args, **kwargs)
+    
+    @property
+    def source_status(self):
+        """Return human-readable source status"""
+        if self.source_material and self.source_material.strip():
+            return "✅ Has Source"
+        elif self.source_recovery_attempted:
+            return "❌ Recovery Failed"
+        else:
+            return "⚠️ Missing Source"
+    
+    def mark_source_recovery_attempted(self):
+        """Mark that source recovery was attempted"""
+        self.source_recovery_attempted = True
+        self.source_recovery_date = timezone.now()
+        self.save()
     
     class Meta:
+        # ... your existing meta options ...
         ordering = ['question_id']
         indexes = [
             models.Index(fields=['question_type', 'domain']),
             models.Index(fields=['difficulty_level']),
+            models.Index(fields=['is_missing_source']),  # New index for filtering
         ]
+    
     
     def __str__(self):
         return f"{self.question_id}: {self.question_text[:50]}..."

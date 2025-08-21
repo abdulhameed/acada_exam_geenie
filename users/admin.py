@@ -1,7 +1,7 @@
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.contrib import admin
-from .models import CustomUser
+from .models import CustomUser, RegistrationInvite
 
 # admin.site.register(CustomUser)
 
@@ -31,4 +31,11 @@ class CustomUserAdmin(UserAdmin):
     )
 
 
+class RegistrationInviteAdmin(admin.ModelAdmin):
+    list_display = ['email', 'school', 'created_at', 'is_used']
+    list_filter = ['school', 'is_used', 'created_at']
+    search_fields = ['email', 'school__name']
+    readonly_fields = ['token', 'created_at']
+
 admin.site.register(CustomUser, CustomUserAdmin)
+admin.site.register(RegistrationInvite, RegistrationInviteAdmin)
