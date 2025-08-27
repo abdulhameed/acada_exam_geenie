@@ -185,7 +185,7 @@ class Command(BaseCommand):
         return dataset
     
     def import_questions(self, dataset, questions_data, overwrite=False):
-        """Import questions into the database"""
+        """Import questions into the database - UPDATED for LearningQ data"""
         imported_count = 0
         skipped_count = 0
         error_count = 0
@@ -203,6 +203,9 @@ class Command(BaseCommand):
                     skipped_count += 1
                     continue
                 
+                # Handle article_id for Khan Academy articles
+                video_id_value = q_data.get('video_id', '') or q_data.get('article_id', '')
+                
                 # Map and validate data
                 question_data = {
                     'dataset': dataset,
@@ -214,9 +217,10 @@ class Command(BaseCommand):
                     'difficulty_level': self.map_difficulty(q_data.get('difficulty', 'unknown')),
                     'video_title': q_data.get('video_title', ''),
                     'video_youtube_link': q_data.get('video_youtube_link', ''),
-                    'video_id': q_data.get('video_id', ''),
+                    'video_id': video_id_value,  # Maps both video_id and article_id
                     'file_source': q_data.get('file_source', ''),
                     'quality_rating': self.parse_float(q_data.get('quality_rating')),
+                    'is_missing_source': len(q_data.get('source_material', '')) < 100,  # Mark if insufficient source
                 }
                 
                 if existing_question and overwrite:
@@ -242,7 +246,7 @@ class Command(BaseCommand):
         return imported_count, skipped_count, error_count
     
     def map_question_type(self, question_type):
-        """Map question type to valid choices"""
+        """Map question type to valid choices - UPDATED for LearningQ data"""
         if not question_type:
             return 'MCQ'
         
@@ -251,9 +255,9 @@ class Command(BaseCommand):
         
         if question_type in valid_types:
             return question_type
-        elif question_type in ['MULTIPLE_CHOICE', 'MC']:
+        elif question_type in ['MULTIPLE_CHOICE', 'MC', 'MULTIPLE-CHOICES']:  # Added MULTIPLE-CHOICES
             return 'MCQ'
-        elif question_type in ['SHORT', 'SA']:
+        elif question_type in ['SHORT', 'SA', 'OPEN-ENDED', 'OPEN_ENDED']:  # Added OPEN-ENDED
             return 'SHORT_ANSWER'
         elif question_type in ['TF', 'T_F', 'TRUE_FALSE']:
             return 'TRUE_FALSE'

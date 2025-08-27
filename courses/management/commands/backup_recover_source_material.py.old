@@ -1,0 +1,463 @@
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
+from django.utils import timezone
+from django.core.exceptions import ObjectDoesNotExist
+from courses.models import ExpertQuestion, ExpertQuestionDataset
+import pandas as pd
+import requests
+import time
+import re
+import logging
+from typing import Optional, Dict
+import os
+
+
+class Command(BaseCommand):
+    help = 'Recover missing source material for expert questions and update Django models with flags'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            'csv_file',
+            type=str,
+            help='Path to the CSV file containing expert questions'
+        )
+        parser.add_argument(
+            '--dataset-name',
+            type=str,
+            default='LearningQ Research Sample',
+            help='Name of the expert question dataset'
+        )
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Run without making actual changes to the database'
+        )
+        parser.add_argument(
+            '--limit',
+            type=int,
+            help='Limit the number of questions to process (for testing)'
+        )
+        parser.add_argument(
+            '--force-retry',
+            action='store_true',
+            help='Retry recovery for questions that previously failed'
+        )
+
+    def handle(self, *args, **options):
+        self.csv_file = options['csv_file']
+        self.dataset_name = options['dataset_name']
+        self.dry_run = options['dry_run']
+        self.limit = options['limit']
+        self.force_retry = options['force_retry']
+        
+        # Setup logging
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+        
+        # Initialize counters
+        self.recovered_count = 0
+        self.failed_count = 0
+        self.updated_models = 0
+        self.skipped_count = 0
+        
+        if self.dry_run:
+            self.stdout.write(
+                self.style.WARNING('🧪 Running in DRY RUN mode - no database changes will be made')
+            )
+        
+        self.stdout.write('🚀 Starting Enhanced Source Material Recovery...')
+        
+        try:
+            self.process_recovery()
+        except Exception as e:
+            raise CommandError(f'Recovery failed: {str(e)}')
+
+    def process_recovery(self):
+        """Main recovery process with enhanced flag management"""
+        self.stdout.write(f'📄 Loading CSV file: {self.csv_file}')
+        
+        if not os.path.exists(self.csv_file):
+            raise CommandError(f'❌ CSV file not found: {self.csv_file}')
+        
+        # Load CSV
+        try:
+            df = pd.read_csv(self.csv_file)
+        except Exception as e:
+            raise CommandError(f'❌ Error reading CSV file: {str(e)}')
+        
+        self.stdout.write(f'✅ Loaded {len(df)} questions from CSV')
+        
+        # Get or create dataset
+        if not self.dry_run:
+            self.dataset, created = ExpertQuestionDataset.objects.get_or_create(
+                name=self.dataset_name,
+                defaults={
+                    'description': 'Research dataset with recovered source material',
+                    'source_type': 'research',
+                    'is_active': True
+                }
+            )
+            if created:
+                self.stdout.write(f'🆕 Created new dataset: {self.dataset_name}')
+        
+        # Update all questions to mark missing source material
+        self.update_missing_source_flags(df)
+        
+        # Identify questions needing recovery
+        missing_mask = (
+            df['source_material'].isna() | 
+            (df['source_material'] == 'null') | 
+            (df['source_material'].str.strip() == '')
+        )
+        missing_questions = df[missing_mask].copy()
+        
+        # Filter based on force_retry flag
+        if not self.force_retry and not self.dry_run:
+            # Skip questions that already had recovery attempted
+            attempted_questions = set(
+                ExpertQuestion.objects.filter(
+                    source_recovery_attempted=True,
+                    dataset=self.dataset
+                ).values_list('question_id', flat=True)
+            )
+            
+            missing_questions = missing_questions[
+                ~missing_questions['question_id'].isin(attempted_questions)
+            ]
+            
+            if len(attempted_questions) > 0:
+                self.stdout.write(
+                    f'⏭️  Skipping {len(attempted_questions)} questions with previous recovery attempts. '
+                    f'Use --force-retry to retry them.'
+                )
+        
+        if self.limit:
+            missing_questions = missing_questions.head(self.limit)
+        
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'🎯 Found {len(missing_questions)} questions to process'
+            )
+        )
+        
+        if len(missing_questions) == 0:
+            self.stdout.write('✨ No questions need recovery. Exiting.')
+            self.print_summary()
+            return
+        
+        # Process each question
+        for idx, row in missing_questions.iterrows():
+            self.process_single_question(df, idx, row)
+            
+            # Rate limiting - be respectful to APIs
+            time.sleep(0.5)
+        
+        # Save updated CSV
+        if not self.dry_run:
+            output_path = self.csv_file.replace('.csv', '_recovered.csv')
+            df.to_csv(output_path, index=False)
+            self.stdout.write(f'💾 Updated CSV saved to: {output_path}')
+        
+        self.print_summary()
+
+    def update_missing_source_flags(self, df):
+        """Update missing source flags for all questions in the dataset"""
+        if self.dry_run:
+            return
+        
+        self.stdout.write('🏷️  Updating missing source flags...')
+        
+        total_updated = 0
+        for _, row in df.iterrows():
+            try:
+                question = ExpertQuestion.objects.get(question_id=row['question_id'])
+                
+                # Check if source material is missing
+                has_source = bool(
+                    row['source_material'] and 
+                    pd.notna(row['source_material']) and 
+                    str(row['source_material']).strip() != '' and 
+                    str(row['source_material']) != 'null'
+                )
+                
+                question.is_missing_source = not has_source
+                question.save()
+                total_updated += 1
+                
+            except ExpertQuestion.DoesNotExist:
+                # Question will be created during recovery process
+                pass
+        
+        self.stdout.write(f'✅ Updated flags for {total_updated} existing questions')
+
+    def process_single_question(self, df: pd.DataFrame, idx: int, row: pd.Series):
+        """Process a single question with enhanced flag management"""
+        question_id = row['question_id']
+        
+        self.stdout.write(f'🔄 Processing: {question_id}')
+        
+        try:
+            recovered_source = None
+            
+            # Attempt recovery based on source type
+            if row['source_type'] == 'Khan Academy Video' and pd.notna(row['video_id']):
+                recovered_source = self.recover_khan_video_transcript(row['video_id'])
+                
+            elif row['source_type'] == 'Khan Academy Article' and pd.notna(row['article_id']):
+                recovered_source = self.recover_khan_article_content(row['article_id'])
+                
+            elif row['source_type'] == 'TED-Ed' and pd.notna(row['video_youtube_link']):
+                recovered_source = self.recover_ted_transcript(row['video_youtube_link'])
+            
+            if recovered_source:
+                # Update CSV
+                df.at[idx, 'source_material'] = recovered_source
+                
+                # Update Django model (if not dry run)
+                if not self.dry_run:
+                    model_updated = self.update_django_model(row, recovered_source, success=True)
+                    if model_updated:
+                        self.updated_models += 1
+                
+                self.recovered_count += 1
+                self.stdout.write(
+                    self.style.SUCCESS(f'  ✅ Recovered ({len(recovered_source)} chars)')
+                )
+            else:
+                # Mark as recovery attempted but failed
+                if not self.dry_run:
+                    self.update_django_model(row, None, success=False)
+                
+                self.failed_count += 1
+                self.stdout.write(
+                    self.style.ERROR(f'  ❌ Failed to recover source material')
+                )
+                
+        except Exception as e:
+            # Mark as recovery attempted but failed due to error
+            if not self.dry_run:
+                self.update_django_model(row, None, success=False)
+            
+            self.failed_count += 1
+            self.stdout.write(
+                self.style.ERROR(f'  💥 Error: {str(e)}')
+            )
+
+    def update_django_model(self, row: pd.Series, recovered_source: Optional[str], success: bool) -> bool:
+        """Update Django model with recovery results and flags"""
+        try:
+            with transaction.atomic():
+                try:
+                    expert_question = ExpertQuestion.objects.get(
+                        question_id=row['question_id']
+                    )
+                    
+                    # Update source material if recovered
+                    if recovered_source:
+                        expert_question.source_material = recovered_source
+                        expert_question.is_missing_source = False
+                    else:
+                        expert_question.is_missing_source = True
+                    
+                    # Mark recovery attempt
+                    expert_question.source_recovery_attempted = True
+                    expert_question.source_recovery_date = timezone.now()
+                    expert_question.save()
+                    
+                except ExpertQuestion.DoesNotExist:
+                    # Create new question
+                    expert_question = ExpertQuestion.objects.create(
+                        dataset=self.dataset,
+                        question_id=row['question_id'],
+                        question_text=row['question_text'],
+                        question_type=self.map_question_type(row['question_type']),
+                        source_material=recovered_source or '',
+                        domain=row.get('domain', ''),
+                        difficulty_level=self.map_difficulty_level(row.get('difficulty_level')),
+                        video_title=row.get('video_title', ''),
+                        video_youtube_link=row.get('video_youtube_link', ''),
+                        video_id=row.get('video_id', ''),
+                        file_source=row.get('file_source', ''),
+                        times_used_as_template=0,
+                        is_missing_source=not bool(recovered_source),
+                        source_recovery_attempted=True,
+                        source_recovery_date=timezone.now()
+                    )
+                
+                return True
+                
+        except Exception as e:
+            self.logger.error(f'Django model update failed for {row["question_id"]}: {str(e)}')
+            return False
+
+    def recover_khan_video_transcript(self, video_id: str) -> Optional[str]:
+        """Recover Khan Academy video transcript"""
+        try:
+            from youtube_transcript_api import YouTubeTranscriptApi
+            
+            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+            transcript_text = ' '.join([entry['text'] for entry in transcript_list])
+            
+            # Clean and limit length
+            cleaned_transcript = self.clean_transcript_text(transcript_text)
+            if len(cleaned_transcript) > 8000:
+                cleaned_transcript = cleaned_transcript[:8000] + "..."
+            
+            return cleaned_transcript
+            
+        except ImportError:
+            self.stdout.write(
+                self.style.ERROR('❌ youtube-transcript-api not installed. Run: pip install youtube-transcript-api')
+            )
+            return None
+        except Exception as e:
+            self.logger.warning(f'YouTube transcript failed for {video_id}: {str(e)}')
+            return None
+
+    def recover_khan_article_content(self, article_id: str) -> Optional[str]:
+        """Recover Khan Academy article content"""
+        try:
+            possible_urls = [
+                f"https://www.khanacademy.org/science/article/{article_id}",
+                f"https://www.khanacademy.org/math/article/{article_id}",
+                f"https://www.khanacademy.org/humanities/article/{article_id}",
+                f"https://www.khanacademy.org/article/{article_id}"
+            ]
+            
+            for url in possible_urls:
+                try:
+                    response = requests.get(url, timeout=15, headers={
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    })
+                    
+                    if response.status_code == 200:
+                        try:
+                            from bs4 import BeautifulSoup
+                        except ImportError:
+                            self.stdout.write(
+                                self.style.ERROR('❌ beautifulsoup4 not installed. Run: pip install beautifulsoup4')
+                            )
+                            return None
+                        
+                        soup = BeautifulSoup(response.content, 'html.parser')
+                        
+                        # Extract content
+                        content_selectors = [
+                            '.article-content',
+                            '.main-content',
+                            '[data-test-id="article-content"]',
+                            '.markdown-rendered-content'
+                        ]
+                        
+                        content = ""
+                        for selector in content_selectors:
+                            elements = soup.select(selector)
+                            if elements:
+                                content = ' '.join([elem.get_text() for elem in elements])
+                                break
+                        
+                        if not content:
+                            paragraphs = soup.find_all('p')
+                            content = ' '.join([p.get_text() for p in paragraphs])
+                        
+                        if content and len(content.strip()) > 100:
+                            cleaned_content = self.clean_article_text(content)
+                            if len(cleaned_content) > 8000:
+                                cleaned_content = cleaned_content[:8000] + "..."
+                            return cleaned_content
+                        
+                except requests.RequestException:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f'Article recovery failed for {article_id}: {str(e)}')
+            return None
+
+    def recover_ted_transcript(self, youtube_link: str) -> Optional[str]:
+        """Recover TED-Ed video transcript"""
+        try:
+            # Extract video ID from YouTube link
+            video_id = None
+            
+            if 'youtube.com' in youtube_link:
+                if 'v=' in youtube_link:
+                    video_id = youtube_link.split('v=')[1].split('&')[0]
+                elif '/embed/' in youtube_link:
+                    video_id = youtube_link.split('/embed/')[1].split('?')[0]
+            elif 'youtu.be' in youtube_link:
+                video_id = youtube_link.split('youtu.be/')[1].split('?')[0]
+            
+            if video_id:
+                return self.recover_khan_video_transcript(video_id)
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f'TED-Ed recovery failed: {str(e)}')
+            return None
+
+    def map_question_type(self, question_type: str) -> str:
+        """Map question type to Django choices"""
+        mapping = {
+            'MCQ': 'MCQ',
+            'ESSAY': 'ESSAY',
+            'SHORT_ANSWER': 'SHORT_ANSWER',
+            'TRUE_FALSE': 'TRUE_FALSE'
+        }
+        return mapping.get(question_type, 'MCQ')
+
+    def map_difficulty_level(self, difficulty) -> str:
+        """Map difficulty level to Django choices"""
+        if pd.isna(difficulty) or not difficulty:
+            return 'unknown'
+        
+        difficulty_lower = str(difficulty).lower()
+        mapping = {
+            'easy': 'easy',
+            'medium': 'medium',
+            'hard': 'hard',
+            'beginner': 'easy',
+            'intermediate': 'medium',
+            'advanced': 'hard'
+        }
+        return mapping.get(difficulty_lower, 'unknown')
+
+    def clean_transcript_text(self, text: str) -> str:
+        """Clean transcript text"""
+        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r'\d+:\d+', '', text)
+        text = re.sub(r'\[.*?\]', '', text)
+        text = re.sub(r'\(.*?\)', '', text)
+        return text.strip()
+
+    def clean_article_text(self, text: str) -> str:
+        """Clean article text"""
+        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r'\xa0', ' ', text)
+        text = re.sub(r'\u200b', '', text)
+        return text.strip()
+
+    def print_summary(self):
+        """Print detailed summary of recovery results"""
+        total_processed = self.recovered_count + self.failed_count
+        
+        self.stdout.write('')
+        self.stdout.write(self.style.SUCCESS('🎉 ENHANCED RECOVERY SUMMARY'))
+        self.stdout.write('=' * 50)
+        self.stdout.write(f'📊 Total processed: {total_processed}')
+        self.stdout.write(f'✅ Successfully recovered: {self.recovered_count}')
+        self.stdout.write(f'❌ Failed recovery: {self.failed_count}')
+        self.stdout.write(f'🏷️  Django models updated: {self.updated_models}')
+        
+        if total_processed > 0:
+            success_rate = (self.recovered_count / total_processed) * 100
+            self.stdout.write(f'📈 Success rate: {success_rate:.1f}%')
+        
+        self.stdout.write('')
+        self.stdout.write('🔍 Next steps:')
+        self.stdout.write('1. Check Django admin for updated source material flags')
+        self.stdout.write('2. Run verification command to confirm results')
+        self.stdout.write('3. Use updated dataset for AI question generation')
+        self.stdout.write('=' * 50)

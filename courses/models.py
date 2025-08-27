@@ -182,7 +182,7 @@ class ExpertQuestion(models.Model):
     times_used_as_template = models.IntegerField(default=0)
     quality_rating = models.FloatField(null=True, blank=True, help_text="Expert quality rating (1-5)")
     
-    created_at = models.DateTimeField(auto_now_add=True)
+    # created_at = models.DateTimeField(auto_now_add=True)
 
     is_missing_source = models.BooleanField(
         default=False, 
@@ -197,6 +197,26 @@ class ExpertQuestion(models.Model):
         null=True, 
         help_text='When source material was last recovered or attempted'
     )
+
+    # RESEARCH SELECTION FIELDS 
+    is_selected_for_research = models.BooleanField(
+        default=False, 
+        help_text='Indicates if this question is selected for research comparison'
+    )
+    selection_date = models.DateTimeField(
+        blank=True, 
+        null=True, 
+        help_text='When this question was selected for research'
+    )
+    selection_batch = models.CharField(
+        max_length=100, 
+        blank=True, 
+        help_text='Batch identifier for selection (e.g., research_baseline_v1)'
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     def save(self, *args, **kwargs):
         """Auto-update is_missing_source flag when saving"""
@@ -212,6 +232,16 @@ class ExpertQuestion(models.Model):
             return "❌ Recovery Failed"
         else:
             return "⚠️ Missing Source"
+        
+    @property
+    def is_research_selected(self):
+        """Check if question is selected for research"""
+        return self.is_selected_for_research
+    
+    @property
+    def has_adequate_source(self):
+        """Check if question has adequate source material for research"""
+        return bool(self.source_material and len(self.source_material.strip()) >= 100)
     
     def mark_source_recovery_attempted(self):
         """Mark that source recovery was attempted"""
@@ -225,9 +255,10 @@ class ExpertQuestion(models.Model):
         indexes = [
             models.Index(fields=['question_type', 'domain']),
             models.Index(fields=['difficulty_level']),
-            models.Index(fields=['is_missing_source']),  # New index for filtering
+            # models.Index(fields=['is_missing_source']),
+            models.Index(fields=['is_selected_for_research']),
+            models.Index(fields=['selection_batch']),
         ]
-    
     
     def __str__(self):
         return f"{self.question_id}: {self.question_text[:50]}..."

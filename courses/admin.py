@@ -93,6 +93,9 @@ class ExpertQuestionAdmin(admin.ModelAdmin):
         'source_status_display',
         'difficulty_level',
         'times_used_as_template',
+        'is_selected_for_research',
+        'selection_batch',
+        'selection_date',
         'created_at'
     ]
     
@@ -103,6 +106,8 @@ class ExpertQuestionAdmin(admin.ModelAdmin):
         'domain', 
         'difficulty_level',
         'dataset',
+        'is_selected_for_research',
+        'selection_batch',
         'created_at'
     ]
     
@@ -110,7 +115,8 @@ class ExpertQuestionAdmin(admin.ModelAdmin):
         'question_id', 
         'question_text', 
         'domain', 
-        'video_title'
+        'video_title',
+        'selection_batch'
     ]
     
     readonly_fields = [
@@ -161,6 +167,8 @@ class ExpertQuestionAdmin(admin.ModelAdmin):
     )
     
     actions = [
+        'mark_selected_for_research',
+        'unmark_selected_for_research',
         'mark_for_source_recovery',
         'mark_source_recovery_attempted',
         'reset_source_flags'
@@ -217,7 +225,50 @@ class ExpertQuestionAdmin(admin.ModelAdmin):
         self.message_user(request, f'{updated} questions had their source flags reset.')
     reset_source_flags.short_description = "Reset source flags"
 
+    def mark_selected_for_research(self, request, queryset):
+        """Mark questions as selected for research"""
+        from django.utils import timezone
+        
+        # Only select questions with source material
+        valid_questions = queryset.filter(
+            source_material__isnull=False
+        ).exclude(source_material='')
+        
+        updated = valid_questions.update(
+            is_selected_for_research=True,
+            selection_date=timezone.now(),
+            selection_batch='admin_manual_selection'
+        )
+        
+        skipped = queryset.count() - updated
+        
+        message = f'{updated} questions marked as selected for research.'
+        if skipped > 0:
+            message += f' {skipped} questions skipped (no source material).'
+            
+        self.message_user(request, message)
+    mark_selected_for_research.short_description = "Mark selected for research"
     
+    def unmark_selected_for_research(self, request, queryset):
+        """Unmark questions from research selection"""
+        updated = queryset.update(
+            is_selected_for_research=False,
+            selection_date=None,
+            selection_batch=''
+        )
+        self.message_user(request, f'{updated} questions unmarked from research selection.')
+    unmark_selected_for_research.short_description = "Unmark research selection"
+
+    def has_source_material(self, obj):
+        """Display if question has adequate source material"""
+        if not obj.source_material:
+            return False
+        return len(obj.source_material.strip()) >= 100
+    
+    has_source_material.boolean = True
+    has_source_material.short_description = "Has Source"
+    
+
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
     list_display = ['name', 'code', 'school', 'lecturer', 'created_at']
@@ -238,10 +289,10 @@ class QuestionGenerationTemplateAdmin(admin.ModelAdmin):
     search_fields = ['name', 'description', 'course__name']
 
 
-admin.site.register(Course)
+# admin.site.register(Course)
 admin.site.register(CourseContent)
 admin.site.register(QuestionTemplate, QuestionTemplateAdmin)
-admin.site.register(QuestionGenerationTemplate, QuestionGenerationTemplateAdmin)
-admin.site.register(ExpertQuestionDataset, ExpertQuestionDatasetAdmin)
-admin.site.register(ExpertQuestion, ExpertQuestionAdmin)
-admin.site.register(EnhancedCourseContent, EnhancedCourseContentAdmin)
+# admin.site.register(QuestionGenerationTemplate, QuestionGenerationTemplateAdmin)
+# admin.site.register(ExpertQuestionDataset, ExpertQuestionDatasetAdmin)
+# admin.site.register(ExpertQuestion, ExpertQuestionAdmin)
+# admin.site.register(EnhancedCourseContent, EnhancedCourseContentAdmin)
