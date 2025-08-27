@@ -477,7 +477,204 @@ Generate {target_count} essay questions:
             logger.error(f"Error parsing MCQ text: {str(e)}")
         
         return None
-#  
+    
+    def generate_question_from_source(self, source_material: str, question_type: str, 
+                                    domain: str, max_tokens: int = 800, 
+                                    reference_question: Optional[str] = None) -> Optional[Dict]:
+        """
+        Generate a question from raw source material
+        
+        Args:
+            source_material: The educational content
+            question_type: 'MCQ', 'ESSAY', etc.
+            domain: Subject domain
+            max_tokens: Maximum tokens for generation
+            reference_question: Optional reference for style matching
+        """
+        try:
+            # Truncate source material if too long (keep context within token limits)
+            if len(source_material) > 3000:  # Rough character limit
+                source_material = source_material[:3000] + "..."
+            
+            if question_type.upper() == 'MCQ':
+                return self._generate_mcq_from_source(source_material, domain, max_tokens, reference_question)
+            elif question_type.upper() == 'ESSAY':
+                return self._generate_essay_from_source(source_material, domain, max_tokens, reference_question)
+            else:
+                logger.warning(f"Unsupported question type: {question_type}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error generating question from source: {str(e)}")
+            return None
+    
+    def _generate_mcq_from_source(self, source_material: str, domain: str, 
+                                max_tokens: int, reference_question: Optional[str]) -> Optional[Dict]:
+        """Generate MCQ from source material"""
+        
+        prompt = f"""Based on the following {domain} content, create a high-quality multiple-choice question.
+
+SOURCE CONTENT:
+{source_material}
+
+{f"REFERENCE STYLE (create a question similar in style and complexity): {reference_question}" if reference_question else ""}
+
+Create a multiple-choice question with 4 options (A, B, C, D) and clearly indicate the correct answer.
+
+Requirements:
+- Question should test understanding of the content
+- Options should be plausible but only one correct
+- Appropriate difficulty level for {domain}
+- Clear and grammatically correct
+
+Format:
+Question: [Your question here]
+A) [Option A]
+B) [Option B] 
+C) [Option C]
+D) [Option D]
+Correct Answer: [Letter]
+"""
+        
+        try:
+            response = self.client.completions.create(
+                model=self.deployment_name,
+                prompt=prompt,
+                max_tokens=max_tokens,
+                temperature=0.7
+            )
+            
+            generated_text = response.choices[0].text.strip()
+            parsed_mcq = self._parse_mcq_text(generated_text)
+            
+            if parsed_mcq:
+                return {
+                    'question': parsed_mcq['question'],
+                    'options': parsed_mcq['options'],
+                    'type': 'MCQ',
+                    'confidence_score': 0.85
+                }
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error generating MCQ: {str(e)}")
+            return None
+    
+    def _generate_essay_from_source(self, source_material: str, domain: str,
+                                  max_tokens: int, reference_question: Optional[str]) -> Optional[Dict]:
+        """Generate essay question from source material"""
+        
+        prompt = f"""Based on the following {domain} content, create a thoughtful essay question that requires analysis and critical thinking.
+
+SOURCE CONTENT:
+{source_material}
+
+{f"REFERENCE STYLE (create a question similar in style and complexity): {reference_question}" if reference_question else ""}
+
+Create an essay question that:
+- Requires critical thinking and analysis of the content
+- Can be answered in 200-500 words
+- Tests deep understanding of the concepts
+- Encourages detailed explanations and examples
+- Is appropriate for {domain} subject area
+
+The question should be clear, focused, and thought-provoking.
+
+Essay Question:"""
+        
+        try:
+            response = self.client.completions.create(
+                model=self.deployment_name,
+                prompt=prompt,
+                max_tokens=max_tokens,
+                temperature=0.7
+            )
+            
+            question_text = response.choices[0].text.strip()
+            
+            # Clean up the question
+            question_text = question_text.replace("Essay Question:", "").strip()
+            
+            if question_text and len(question_text) > 10:
+                return {
+                    'question': question_text,
+                    'type': 'ESSAY',
+                    'confidence_score': 0.8
+                }
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error generating essay question: {str(e)}")
+            return None
+
+    # You may already have this method, but here's an improved version
+    def _parse_mcq_text(self, generated_text: str) -> Optional[Dict]:
+        """Parse MCQ text into structured format"""
+        try:
+            lines = [line.strip() for line in generated_text.split('\n') if line.strip()]
+            
+            question = ""
+            options = []
+            correct_answer = None
+            
+            # State tracking
+            reading_question = False
+            reading_options = False
+            
+            for line in lines:
+                # Find question
+                if line.startswith('Question:'):
+                    question = line.replace('Question:', '').strip()
+                    reading_question = True
+                    reading_options = False
+                    continue
+                
+                # Find options A-D
+                option_match = re.match(r'^([ABCD])\)\s*(.+)$', line)
+                if option_match:
+                    letter = option_match.group(1)
+                    text = option_match.group(2)
+                    options.append({
+                        'letter': letter,
+                        'text': text,
+                        'is_correct': False
+                    })
+                    reading_options = True
+                    reading_question = False
+                    continue
+                
+                # Find correct answer
+                if line.startswith('Correct Answer:'):
+                    correct_answer = line.replace('Correct Answer:', '').strip().upper()
+                    continue
+                
+                # Continue building question if we're reading it
+                if reading_question and not line.startswith(('A)', 'B)', 'C)', 'D)', 'Correct')):
+                    if question:
+                        question += " " + line
+                    else:
+                        question = line
+            
+            # Set correct answer
+            if correct_answer and options:
+                for option in options:
+                    if option['letter'] == correct_answer:
+                        option['is_correct'] = True
+                        break
+            
+            # Validate we have question and 4 options
+            if question and len(options) == 4:
+                return {
+                    'question': question.strip(),
+                    'options': options
+                }
+            
+        except Exception as e:
+            logger.error(f"Error parsing MCQ text: {str(e)}")
+        
+        return None
+# git add . && git commit
+
 
 # For backward compatibility, create an instance function
 def generate_exam_questions_enhanced(exam_id: int) -> str:

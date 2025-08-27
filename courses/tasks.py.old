@@ -1,0 +1,321 @@
+# courses/tasks.py
+from celery import shared_task, group, chord
+from celery.result import AsyncResult
+import pandas as pd
+import os
+import logging
+from typing import List, Dict, Optional
+from django.conf import settings
+from django.utils import timezone
+from django.db import transaction
+
+from exams.enhanced_ai_utils import EnhancedQuestionGenerator
+from courses.models import AIGeneratedQuestion, ExpertQuestion
+from .models import Course
+
+logger = logging.getLogger(__name__)
+
+
+@shared_task(bind=True)
+def generate_single_question_from_source(self, source_data: Dict) -> Dict:
+    """
+    Generate a single question from source material
+    Args:
+        source_data: Dict containing question_id, domain, question_type, source_material, target_question
+    """
+    try:
+        generator = EnhancedQuestionGenerator()
+        
+        # Extract data
+        question_id = source_data['question_id']
+        domain = source_data['domain']
+        question_type = source_data['question_type']
+        source_material = source_data['source_material']
+        target_question = source_data['target_question']
+        
+        # Generate question using enhanced generator
+        generated_question = generator.generate_question_from_source(
+            source_material=source_material,
+            question_type=question_type,
+            domain=domain,
+            max_tokens=800,  # Your requested max_tokens
+            reference_question=target_question  # Use as reference for style
+        )
+        
+        if generated_question:
+            # Create AIGeneratedQuestion record
+            ai_question = AIGeneratedQuestion.objects.create(
+                original_question_id=question_id,
+                domain=domain,
+                question_type=question_type,
+                source_material=source_material[:2000],  # Truncate if too long
+                generated_question_text=generated_question['question'],
+                reference_question=target_question,
+                generation_params={
+                    'max_tokens': 800,
+                    'model': 'gpt-35-turbo-instruct-0914',
+                    'temperature': 0.7,
+                    'domain': domain
+                },
+                generation_status='completed',
+                quality_score=generated_question.get('confidence_score', 0.8)
+            )
+            
+            logger.info(f"Successfully generated question for {question_id}")
+            return {
+                'success': True,
+                'question_id': question_id,
+                'ai_question_id': ai_question.id,
+                'generated_text': generated_question['question'][:200] + "..."  # Truncate for log
+            }
+        else:
+            logger.error(f"Failed to generate question for {question_id}")
+            return {
+                'success': False,
+                'question_id': question_id,
+                'error': 'Generation failed'
+            }
+            
+    except Exception as e:
+        logger.error(f"Error generating question for {question_id}: {str(e)}")
+        return {
+            'success': False,
+            'question_id': question_id,
+            'error': str(e)
+        }
+
+
+@shared_task(bind=True)
+def process_batch_completion(self, results: List[Dict]) -> Dict:
+    """
+    Process completion of batch question generation
+    """
+    successful = [r for r in results if r.get('success', False)]
+    failed = [r for r in results if not r.get('success', False)]
+    
+    logger.info(f"Batch completed: {len(successful)} successful, {len(failed)} failed")
+    
+    return {
+        'total_processed': len(results),
+        'successful': len(successful),
+        'failed': len(failed),
+        'success_rate': len(successful) / len(results) * 100 if results else 0,
+        'failed_questions': [f['question_id'] for f in failed]
+    }
+
+
+@shared_task(bind=True)
+def generate_questions_from_csv_batch(self, csv_filename: str = 'research_source_materials.csv', 
+                                     batch_size: int = 10, max_workers: int = 5) -> str:
+    """
+    Main task to process CSV file in batches with parallel processing
+    
+    Args:
+        csv_filename: Name of CSV file in project root
+        batch_size: Number of questions to process in parallel batches
+        max_workers: Maximum number of parallel workers
+    """
+    try:
+        # Load CSV file
+        csv_path = os.path.join(settings.BASE_DIR, csv_filename)
+        
+        if not os.path.exists(csv_path):
+            raise FileNotFoundError(f"CSV file not found: {csv_path}")
+        
+        logger.info(f"Loading CSV file: {csv_path}")
+        df = pd.read_csv(csv_path)
+        
+        if df.empty:
+            return "CSV file is empty"
+        
+        logger.info(f"Loaded {len(df)} questions from CSV")
+        
+        # Convert DataFrame to list of dictionaries
+        source_data_list = []
+        for _, row in df.iterrows():
+            source_data = {
+                'question_id': row['question_id'],
+                'domain': row['domain'],
+                'question_type': row['question_type'],
+                'source_material': row['source_material'],
+                'target_question': row['target_question']
+            }
+            source_data_list.append(source_data)
+        
+        # Process in batches using Celery groups and chords
+        total_questions = len(source_data_list)
+        batches = [source_data_list[i:i + batch_size] 
+                  for i in range(0, total_questions, batch_size)]
+        
+        logger.info(f"Processing {total_questions} questions in {len(batches)} batches")
+        
+        # Create parallel processing jobs
+        batch_jobs = []
+        for i, batch in enumerate(batches):
+            # Create a group of parallel tasks for each batch
+            batch_job = group(
+                generate_single_question_from_source.s(source_data) 
+                for source_data in batch
+            )
+            batch_jobs.append(batch_job)
+        
+        # Execute all batches with completion callback
+        all_jobs = group(batch_jobs)
+        chord_job = chord(all_jobs)(process_batch_completion.s())
+        
+        # Return task ID for tracking
+        task_id = self.request.id
+        logger.info(f"Started batch processing with task ID: {task_id}")
+        
+        return f"Started batch processing of {total_questions} questions. Task ID: {task_id}"
+        
+    except Exception as e:
+        logger.error(f"Error in batch processing: {str(e)}")
+        return f"Error: {str(e)}"
+
+
+@shared_task
+def check_batch_progress(task_id: str) -> Dict:
+    """
+    Check progress of batch processing task
+    """
+    try:
+        result = AsyncResult(task_id)
+        
+        return {
+            'task_id': task_id,
+            'status': result.status,
+            'result': result.result if result.ready() else None,
+            'progress': result.info if hasattr(result, 'info') else None
+        }
+    except Exception as e:
+        return {
+            'task_id': task_id,
+            'status': 'ERROR',
+            'error': str(e)
+        }
+
+
+# Enhanced generator method for single source material
+class EnhancedQuestionGeneratorExtended(EnhancedQuestionGenerator):
+    """Extended version with source material processing"""
+    
+    def generate_question_from_source(self, source_material: str, question_type: str, 
+                                    domain: str, max_tokens: int = 800, 
+                                    reference_question: Optional[str] = None) -> Optional[Dict]:
+        """
+        Generate a question from raw source material
+        
+        Args:
+            source_material: The educational content
+            question_type: 'MCQ', 'ESSAY', etc.
+            domain: Subject domain
+            max_tokens: Maximum tokens for generation
+            reference_question: Optional reference for style matching
+        """
+        try:
+            # Truncate source material if too long (keep context within token limits)
+            if len(source_material) > 3000:  # Rough character limit
+                source_material = source_material[:3000] + "..."
+            
+            if question_type.upper() == 'MCQ':
+                return self._generate_mcq_from_source(source_material, domain, max_tokens, reference_question)
+            elif question_type.upper() == 'ESSAY':
+                return self._generate_essay_from_source(source_material, domain, max_tokens, reference_question)
+            else:
+                logger.warning(f"Unsupported question type: {question_type}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error generating question from source: {str(e)}")
+            return None
+    
+    def _generate_mcq_from_source(self, source_material: str, domain: str, 
+                                max_tokens: int, reference_question: Optional[str]) -> Optional[Dict]:
+        """Generate MCQ from source material"""
+        
+        prompt = f"""Based on the following {domain} content, create a multiple-choice question.
+
+SOURCE CONTENT:
+{source_material}
+
+{f"REFERENCE STYLE: {reference_question}" if reference_question else ""}
+
+Create a multiple-choice question with 4 options (A, B, C, D) and clearly indicate the correct answer.
+
+Format:
+Question: [Your question here]
+A) [Option A]
+B) [Option B] 
+C) [Option C]
+D) [Option D]
+Correct Answer: [Letter]
+"""
+        
+        try:
+            response = self.client.completions.create(
+                model=self.deployment_name,
+                prompt=prompt,
+                max_tokens=max_tokens,
+                temperature=0.7
+            )
+            
+            generated_text = response.choices[0].text.strip()
+            parsed_mcq = self._parse_mcq_text(generated_text)
+            
+            if parsed_mcq:
+                return {
+                    'question': parsed_mcq['question'],
+                    'options': parsed_mcq['options'],
+                    'type': 'MCQ',
+                    'confidence_score': 0.85
+                }
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error generating MCQ: {str(e)}")
+            return None
+    
+    def _generate_essay_from_source(self, source_material: str, domain: str,
+                                  max_tokens: int, reference_question: Optional[str]) -> Optional[Dict]:
+        """Generate essay question from source material"""
+        
+        prompt = f"""Based on the following {domain} content, create a thoughtful essay question that requires analysis and critical thinking.
+
+SOURCE CONTENT:
+{source_material}
+
+{f"REFERENCE STYLE: {reference_question}" if reference_question else ""}
+
+Create an essay question that:
+- Requires critical thinking and analysis
+- Can be answered in 200-500 words
+- Tests deep understanding of the concepts
+- Encourages detailed explanations and examples
+
+Essay Question:"""
+        
+        try:
+            response = self.client.completions.create(
+                model=self.deployment_name,
+                prompt=prompt,
+                max_tokens=max_tokens,
+                temperature=0.7
+            )
+            
+            question_text = response.choices[0].text.strip()
+            
+            # Clean up the question
+            question_text = question_text.replace("Essay Question:", "").strip()
+            
+            if question_text and len(question_text) > 10:
+                return {
+                    'question': question_text,
+                    'type': 'ESSAY',
+                    'confidence_score': 0.8
+                }
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error generating essay question: {str(e)}")
+            return None

@@ -330,15 +330,15 @@ class EnhancedCourseContent(models.Model):
         return processor.process_content(self)
 
 
-class AIGeneratedQuestion(models.Model):
-    corresponding_expert_question = models.OneToOneField(ExpertQuestion, on_delete=models.CASCADE)
-    question_text = models.TextField()
-    generation_model = models.CharField(max_length=100)  # e.g., "gpt-35-turbo-instruct-0914"
-    generation_parameters = models.JSONField()  # Store temperature, etc.
-    generated_at = models.DateTimeField(auto_now_add=True)
+# class AIGeneratedQuestion(models.Model):
+#     corresponding_expert_question = models.OneToOneField(ExpertQuestion, on_delete=models.CASCADE)
+#     question_text = models.TextField()
+#     generation_model = models.CharField(max_length=100)  # e.g., "gpt-35-turbo-instruct-0914"
+#     generation_parameters = models.JSONField()  # Store temperature, etc.
+#     generated_at = models.DateTimeField(auto_now_add=True)
     
-    # Evaluation fields (for later)
-    is_selected_for_evaluation = models.BooleanField(default=True)
+#     # Evaluation fields (for later)
+#     is_selected_for_evaluation = models.BooleanField(default=True)
     
 
 
@@ -387,3 +387,173 @@ class QuestionGenerationTemplate(models.Model):
     
     def __str__(self):
         return f"{self.course.code} - {self.name}"
+    
+
+class AIGeneratedQuestion(models.Model):
+    """
+    Model to store AI-generated questions for research comparison
+    """
+    # Original source tracking
+    original_question_id = models.CharField(
+        max_length=200, 
+        help_text="ID from research_source_materials.csv - maps to ExpertQuestion.question_id"
+    )
+    expert_question = models.ForeignKey(
+        'ExpertQuestion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Direct reference to the original ExpertQuestion model"
+    )
+    domain = models.CharField(max_length=100, help_text="Subject domain")
+    question_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('MCQ', 'Multiple Choice Question'),
+            ('ESSAY', 'Essay Question'),
+            ('SHORT_ANSWER', 'Short Answer'),
+            ('TRUE_FALSE', 'True/False'),
+        ]
+    )
+    
+    # Source and generation data
+    source_material = models.TextField(help_text="Original educational content")
+    reference_question = models.TextField(
+        help_text="Target question from CSV for style reference"
+    )
+    generated_question_text = models.TextField(help_text="AI-generated question")
+    
+    # Generation metadata
+    generation_params = models.JSONField(
+        default=dict,
+        help_text="Parameters used for generation (model, tokens, temperature, etc.)"
+    )
+    generation_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending'),
+            ('processing', 'Processing'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed'),
+        ],
+        default='pending'
+    )
+    generation_timestamp = models.DateTimeField(auto_now_add=True)
+    processing_duration = models.FloatField(
+        null=True, blank=True,
+        help_text="Time taken to generate in seconds"
+    )
+    
+    # Quality and evaluation
+    quality_score = models.FloatField(
+        null=True, blank=True,
+        help_text="AI confidence score (0-1)"
+    )
+    expert_rating = models.FloatField(
+        null=True, blank=True,
+        help_text="Expert evaluation score (1-5)"
+    )
+    educational_value_score = models.IntegerField(
+        null=True, blank=True,
+        choices=[(i, i) for i in range(1, 6)],
+        help_text="Expert rating for educational value"
+    )
+    clarity_score = models.IntegerField(
+        null=True, blank=True,
+        choices=[(i, i) for i in range(1, 6)],
+        help_text="Expert rating for clarity"
+    )
+    difficulty_appropriateness = models.IntegerField(
+        null=True, blank=True,
+        choices=[(i, i) for i in range(1, 6)],
+        help_text="Expert rating for difficulty appropriateness"
+    )
+    blooms_taxonomy_level = models.CharField(
+        max_length=20,
+        choices=[
+            ('remember', 'Remember'),
+            ('understand', 'Understand'),
+            ('apply', 'Apply'),
+            ('analyze', 'Analyze'),
+            ('evaluate', 'Evaluate'),
+            ('create', 'Create'),
+        ],
+        blank=True,
+        help_text="Cognitive level as rated by expert"
+    )
+    
+    # Research tracking
+    is_selected_for_research = models.BooleanField(
+        default=True,
+        help_text="Whether this question is part of research dataset"
+    )
+    research_batch = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Research batch identifier"
+    )
+    
+    # Automatic metrics (to be calculated)
+    bleu_score = models.FloatField(null=True, blank=True)
+    meteor_score = models.FloatField(null=True, blank=True)
+    rouge_score = models.FloatField(null=True, blank=True)
+    question_length = models.IntegerField(null=True, blank=True)
+    vocabulary_diversity = models.FloatField(null=True, blank=True)
+    syntactic_complexity = models.FloatField(null=True, blank=True)
+    
+    # Additional metadata
+    model_used = models.CharField(
+        max_length=100,
+        default='gpt-35-turbo-instruct-0914',
+        help_text="AI model used for generation"
+    )
+    prompt_template = models.TextField(
+        blank=True,
+        help_text="Template used for generation prompt"
+    )
+    error_message = models.TextField(
+        blank=True,
+        help_text="Error message if generation failed"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'courses_ai_generated_question'
+        indexes = [
+            models.Index(fields=['original_question_id']),
+            models.Index(fields=['domain']),
+            models.Index(fields=['question_type']),
+            models.Index(fields=['generation_status']),
+            models.Index(fields=['is_selected_for_research']),
+            models.Index(fields=['research_batch']),
+        ]
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"AI-Generated Q: {self.original_question_id} ({self.question_type})"
+    
+    @property
+    def generation_success_rate(self):
+        """Calculate success rate for this batch"""
+        if not self.research_batch:
+            return None
+        
+        batch_questions = AIGeneratedQuestion.objects.filter(research_batch=self.research_batch)
+        total = batch_questions.count()
+        successful = batch_questions.filter(generation_status='completed').count()
+        
+        return (successful / total * 100) if total > 0 else 0
+    
+    def get_truncated_question(self, max_length=100):
+        """Get truncated version of generated question for display"""
+        if len(self.generated_question_text) <= max_length:
+            return self.generated_question_text
+        return self.generated_question_text[:max_length] + "..."
+    
+    def get_truncated_source(self, max_length=200):
+        """Get truncated version of source material for display"""
+        if len(self.source_material) <= max_length:
+            return self.source_material
+        return self.source_material[:max_length] + "..."
