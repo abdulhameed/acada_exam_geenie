@@ -4,6 +4,7 @@
 # admin.site.register(Course)
 # admin.site.register(CourseContent)
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.contrib import admin
 from .models import Course, CourseContent, EnhancedCourseContent, ExpertQuestion, ExpertQuestionDataset, QuestionGenerationTemplate, QuestionTemplate
 
@@ -69,10 +70,8 @@ class ExpertQuestionDatasetAdmin(admin.ModelAdmin):
         percentage = (with_source / total) * 100
         
         color = "green" if percentage >= 90 else "orange" if percentage >= 50 else "red"
-        return format_html(
-            '<span style="color: {}; font-weight: bold;">{:.1f}%</span>',
-            color, percentage
-        )
+        
+        return mark_safe(f'<span style="color: {color}; font-weight: bold;">{percentage:.1f}%</span>')
     completion_percentage.short_description = "Completion %"
 
 

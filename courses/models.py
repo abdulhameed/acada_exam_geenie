@@ -330,6 +330,18 @@ class EnhancedCourseContent(models.Model):
         return processor.process_content(self)
 
 
+class AIGeneratedQuestion(models.Model):
+    corresponding_expert_question = models.OneToOneField(ExpertQuestion, on_delete=models.CASCADE)
+    question_text = models.TextField()
+    generation_model = models.CharField(max_length=100)  # e.g., "gpt-35-turbo-instruct-0914"
+    generation_parameters = models.JSONField()  # Store temperature, etc.
+    generated_at = models.DateTimeField(auto_now_add=True)
+    
+    # Evaluation fields (for later)
+    is_selected_for_evaluation = models.BooleanField(default=True)
+    
+
+
 class QuestionGenerationTemplate(models.Model):
     """Templates for AI question generation using expert questions"""
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='generation_templates')
